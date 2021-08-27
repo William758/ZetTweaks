@@ -1,4 +1,4 @@
-﻿using BepInEx.Configuration;
+using BepInEx.Configuration;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using RoR2;
@@ -14,7 +14,6 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<bool> FixSelfDamageCfg { get; set; }
 		public static ConfigEntry<float> MoneyChestGivenCfg { get; set; }
 		public static ConfigEntry<int> MoneyStageLimitCfg { get; set; }
-		public static ConfigEntry<float> DirectorSpeedCfg { get; set; }
 		public static ConfigEntry<float> DirectorMoneyCfg { get; set; }
 		public static ConfigEntry<int> DirectorStageLimitCfg { get; set; }
 		public static ConfigEntry<bool> MultitudeMoneyCfg { get; set; }
@@ -36,6 +35,7 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<bool> ModifyHuntressRangeCfg { get; set; }
 		public static ConfigEntry<float> BaseTargetingRangeCfg { get; set; }
 		public static ConfigEntry<float> LevelTargetingRangeCfg { get; set; }
+		public static ConfigEntry<bool> BazaarGestureCfg { get; set; }
 
 
 
@@ -149,6 +149,11 @@ namespace TPDespair.ZetTweaks
 				"2g-Gameplay - Skill", "levelHuntressTargetingRange", 2f,
 				"Huntress level targeting range. Vanilla is 0"
 			);
+
+			BazaarGestureCfg = Config.Bind(
+				"2h-Gameplay - Equipment", "disableBazaarGesture", true,
+				"Prevent Gesture from firing equipment in Bazaar."
+			);
 		}
 
 		internal static void Init()
@@ -186,10 +191,9 @@ namespace TPDespair.ZetTweaks
 					PickupTeleportHook();
 				}
 
-				if (ModifyHuntressRangeCfg.Value && !Compat.DisableHuntressRange)
-				{
-					HuntressRangeBuff();
-				}
+				if (ModifyHuntressRangeCfg.Value && !Compat.DisableHuntressRange) HuntressRangeBuff();
+
+				if (BazaarGestureCfg.Value && !Compat.DisableBazaarGesture) BazaarGestureHook();
 			}
 		}
 
@@ -587,6 +591,35 @@ namespace TPDespair.ZetTweaks
 				else
 				{
 					Debug.LogWarning("ZetTweaks [GameplayModule] - HuntressRangeBuff Failed!");
+				}
+			};
+		}
+
+		private static void BazaarGestureHook()
+		{
+			IL.RoR2.EquipmentSlot.FixedUpdate += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				bool found = c.TryGotoNext(
+					x => x.MatchLdsfld(typeof(RoR2Content.Items).GetField("AutoCastEquipment")),
+					x => x.MatchCall<Inventory>("GetItemCount")
+				);
+
+				if (found)
+				{
+					c.Index += 2;
+
+					c.EmitDelegate<Func<int, int>>((count) =>
+					{
+						if (SceneInfo.instance.sceneDef.nameToken == "MAP_BAZAAR_TITLE") return 0;
+
+						return count;
+					});
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks [GameplayModule] - BazaarGestureHook Failed!");
 				}
 			};
 		}
