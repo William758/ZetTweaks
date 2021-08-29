@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Bootstrap;
 using RoR2;
 using System.Reflection;
@@ -50,7 +50,7 @@ namespace TPDespair.ZetTweaks
 		{
 			LocalUser firstLocalUser = LocalUserManager.GetFirstLocalUser();
 
-			if (!firstLocalUser.cachedBody)
+			if (firstLocalUser == null || !firstLocalUser.cachedBody)
 			{
 				if (CurrentValue != false)
 				{
