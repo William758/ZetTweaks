@@ -369,10 +369,13 @@ namespace TPDespair.ZetTweaks
 
 				if (found)
 				{
+					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldloc, 6);
 					c.Emit(OpCodes.Ldloc, 3);
-					c.EmitDelegate<Func<float, int, int, float>>((rng, i, count) =>
+					c.EmitDelegate<Func<float, BossGroup, int, int, float>>((rng, bossGroup, i, count) =>
 					{
+						if (bossGroup.forceTier3Reward) return rng;
+
 						float progress = (i + 1f) / count;
 						int left = count - i;
 						float chance = 0f;
@@ -384,7 +387,7 @@ namespace TPDespair.ZetTweaks
 						if (left <= 4) chance = Mathf.Max(0.15f, chance);
 						if (left <= 2) chance = Mathf.Max(0.25f, chance);
 
-						//Debug.LogWarning("Drop Reward - index: " + i + " (" + (i + 1) + " of " + count + ") progress: " + progress + " rng: " + rng + " chance: " + chance);
+						Debug.LogWarning("Drop Reward - " + i + " (" + (i + 1) + " of " + count + ") progress: " + progress + " rng: " + rng + " chance: " + chance + " - " + (rng <= chance));
 
 						if (rng <= chance) return 0f;
 						return 1f;
