@@ -47,6 +47,8 @@ Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
 
+v1.0.3 - Prevent tweakBossDropRewards from affecting drops with red tier items.
+
 v1.0.2 - Fix TeleShowFix NullRef when a profile was not selected.
 
 v1.0.1 - Split mod out into StatAdjustment and ProcConfig. Gesture doesn't trigger equipment in bazaar.
