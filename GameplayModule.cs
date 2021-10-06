@@ -5,6 +5,7 @@ using RoR2;
 using RoR2.Navigation;
 using System;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace TPDespair.ZetTweaks
 {
@@ -12,6 +13,10 @@ namespace TPDespair.ZetTweaks
 	{
 		public static ConfigEntry<bool> EnableModuleCfg { get; set; }
 		public static ConfigEntry<bool> FixSelfDamageCfg { get; set; }
+		public static ConfigEntry<bool> FixMeanderTeleporterCfg { get; set; }
+		public static ConfigEntry<bool> BazaarGestureCfg { get; set; }
+		public static ConfigEntry<float> VoidHealthRecoveryCfg { get; set; }
+		public static ConfigEntry<float> VoidShieldRecoveryCfg { get; set; }
 		public static ConfigEntry<float> MoneyChestGivenCfg { get; set; }
 		public static ConfigEntry<int> MoneyStageLimitCfg { get; set; }
 		public static ConfigEntry<float> DirectorMoneyCfg { get; set; }
@@ -32,10 +37,10 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<int> MoonHoldoutZonesCfg { get; set; }
 		public static ConfigEntry<bool> CommandDropletFixCfg { get; set; }
 		public static ConfigEntry<bool> TeleportLostDropletCfg { get; set; }
-		public static ConfigEntry<bool> ModifyHuntressRangeCfg { get; set; }
+		public static ConfigEntry<bool> ModifyHuntressAimCfg { get; set; }
+		public static ConfigEntry<bool> TargetSortAngleCfg { get; set; }
 		public static ConfigEntry<float> BaseTargetingRangeCfg { get; set; }
 		public static ConfigEntry<float> LevelTargetingRangeCfg { get; set; }
-		public static ConfigEntry<bool> BazaarGestureCfg { get; set; }
 
 
 
@@ -51,6 +56,23 @@ namespace TPDespair.ZetTweaks
 			FixSelfDamageCfg = Config.Bind(
 				"2b-Gameplay - Fixes", "fixSelfDamage", true,
 				"Prevent Focus Crystal and Crowbar from increasing self damage."
+			);
+			FixMeanderTeleporterCfg = Config.Bind(
+				"2b-Gameplay - Fixes", "endloopTeleporter", true,
+				"Spawn Primordial Teleporter on the last stage of a loop."
+			);
+
+			BazaarGestureCfg = Config.Bind(
+				"2b-Gameplay - QOL", "disableBazaarGesture", true,
+				"Prevent Gesture from firing equipment in Bazaar."
+			);
+			VoidHealthRecoveryCfg = Config.Bind(
+				"2b-Gameplay - QOL", "voidHealthRecovery", 0.5f,
+				"Recover health fraction when a voidcell is activated. 0 to disable."
+			);
+			VoidShieldRecoveryCfg = Config.Bind(
+				"2b-Gameplay - QOL", "voidShieldRecovery", 0.5f,
+				"Recover shield fraction when a voidcell is activated. 0 to disable."
 			);
 
 			MoneyChestGivenCfg = Config.Bind(
@@ -137,9 +159,13 @@ namespace TPDespair.ZetTweaks
 				"Teleport pickup droplets that go out of bounds."
 			);
 
-			ModifyHuntressRangeCfg = Config.Bind(
-				"2g-Gameplay - Skill", "modifyHuntressRange", true,
-				"Enable or disable changing huntress targeting range."
+			ModifyHuntressAimCfg = Config.Bind(
+				"2g-Gameplay - Skill", "modifyHuntressTargeting", true,
+				"Enable or disable changing huntress targeting."
+			);
+			TargetSortAngleCfg = Config.Bind(
+				"2g-Gameplay - Skill", "sortHuntressByAngle", true,
+				"Prioritize targets closer to the targetiing reticule."
 			);
 			BaseTargetingRangeCfg = Config.Bind(
 				"2g-Gameplay - Skill", "baseHuntressTargetingRange", 60f,
@@ -149,17 +175,15 @@ namespace TPDespair.ZetTweaks
 				"2g-Gameplay - Skill", "levelHuntressTargetingRange", 2f,
 				"Huntress level targeting range. Vanilla is 0"
 			);
-
-			BazaarGestureCfg = Config.Bind(
-				"2h-Gameplay - Equipment", "disableBazaarGesture", true,
-				"Prevent Gesture from firing equipment in Bazaar."
-			);
 		}
 
 		internal static void Init()
 		{
 			if (EnableModuleCfg.Value)
 			{
+				if (FixMeanderTeleporterCfg.Value) PlaceTeleporterHook();
+				VoidRecoveryHook();
+
 				if (DirectorStageLimitCfg.Value > 0) DirectorMoneyHook();
 				if (MultitudeMoneyCfg.Value) GoldFromKillHook();
 
@@ -177,6 +201,8 @@ namespace TPDespair.ZetTweaks
 					SelfFocusHook();
 				}
 
+				if (BazaarGestureCfg.Value && !Compat.DisableBazaarGesture) BazaarGestureHook();
+
 				if (MoneyStageLimitCfg.Value > 0 && !Compat.DisableStarterMoney) SceneDirector.onPostPopulateSceneServer += GiveMoney;
 
 				if (BossDropTweakCfg.Value && !Compat.DisableBossDropTweak) BossDropHook();
@@ -191,9 +217,11 @@ namespace TPDespair.ZetTweaks
 					PickupTeleportHook();
 				}
 
-				if (ModifyHuntressRangeCfg.Value && !Compat.DisableHuntressRange) HuntressRangeBuff();
-
-				if (BazaarGestureCfg.Value && !Compat.DisableBazaarGesture) BazaarGestureHook();
+				if (ModifyHuntressAimCfg.Value)
+				{
+					if (TargetSortAngleCfg.Value && !Compat.DisableHuntressAimFix) HuntressTargetFix();
+					if (!Compat.DisableHuntressRange) HuntressRangeBuff();
+				}
 			}
 		}
 
@@ -265,6 +293,82 @@ namespace TPDespair.ZetTweaks
 				else
 				{
 					Debug.LogWarning("ZetTweaks [GameplayModule] - SelfFocusHook Failed!");
+				}
+			};
+		}
+
+		private static void PlaceTeleporterHook()
+		{
+			On.RoR2.SceneDirector.PlaceTeleporter += (orig, self) =>
+			{
+				if (self.teleporterSpawnCard != null)
+				{
+					bool flag = Run.instance.NetworkstageClearCount % Run.stagesPerLoop == Run.stagesPerLoop - 1;
+					string cardName = flag ? "iscLunarTeleporter" : "iscTeleporter";
+
+					SpawnCard spawnCard = Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/" + cardName);
+
+					if (spawnCard) self.teleporterSpawnCard = spawnCard;
+					else Debug.LogWarning("ZetTweaks [GameplayModule] - interactablespawncard/" + cardName + " could not be found!");
+				}
+
+				orig(self);
+			};
+		}
+
+		private static void BazaarGestureHook()
+		{
+			IL.RoR2.EquipmentSlot.FixedUpdate += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				bool found = c.TryGotoNext(
+					x => x.MatchLdsfld(typeof(RoR2Content.Items).GetField("AutoCastEquipment")),
+					x => x.MatchCall<Inventory>("GetItemCount")
+				);
+
+				if (found)
+				{
+					c.Index += 2;
+
+					c.EmitDelegate<Func<int, int>>((count) =>
+					{
+						if (SceneInfo.instance.sceneDef.nameToken == "MAP_BAZAAR_TITLE") return 0;
+
+						return count;
+					});
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks [GameplayModule] - BazaarGestureHook Failed!");
+				}
+			};
+		}
+
+		private static void VoidRecoveryHook()
+		{
+			On.RoR2.ArenaMissionController.BeginRound += (orig, self) =>
+			{
+				orig(self);
+
+				if (NetworkServer.active)
+				{
+					float healthFraction = VoidHealthRecoveryCfg.Value;
+					float shieldFraction = VoidShieldRecoveryCfg.Value;
+
+					if (healthFraction > 0f || shieldFraction > 0f)
+					{
+						for (int i = 0; i < CharacterMaster.readOnlyInstancesList.Count; i++)
+						{
+							CharacterBody body = CharacterMaster.readOnlyInstancesList[i].GetBody();
+							if (body)
+							{
+								HealthComponent hc = body.healthComponent;
+								if (!Compat.VoidQuality && healthFraction > 0f) hc.Heal(hc.fullHealth * healthFraction, default, true);
+								if (shieldFraction > 0f) hc.RechargeShield(hc.fullShield * shieldFraction);
+							}
+						}
+					}
 				}
 			};
 		}
@@ -568,61 +672,55 @@ namespace TPDespair.ZetTweaks
 			};
 		}
 
-		private static void HuntressRangeBuff()
+		private static void HuntressTargetFix()
 		{
 			IL.RoR2.HuntressTracker.SearchForTarget += (il) =>
 			{
 				ILCursor c = new ILCursor(il);
 
 				bool found = c.TryGotoNext(
-					x => x.MatchLdarg(0),
-					x => x.MatchLdfld<HuntressTracker>("maxTrackingDistance")
+					x => x.MatchLdcI4(1),
+					x => x.MatchStfld<BullseyeSearch>("sortMode")
 				);
 
 				if (found)
 				{
-					c.Index += 2;
+					c.Index += 1;
 
 					c.Emit(OpCodes.Pop);
+					c.Emit(OpCodes.Ldc_I4, 2);
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks [GameplayModule] - HuntressTargetFix Failed!");
+				}
+			};
+		}
+
+		private static void HuntressRangeBuff()
+		{
+			IL.RoR2.HuntressTracker.FixedUpdate += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				bool found = c.TryGotoNext( MoveType.After,
+					x => x.MatchCallOrCallvirt<HuntressTracker>("SearchForTarget")
+				);
+
+				if (found)
+				{
+					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldarg, 0);
 					c.EmitDelegate<Func<HuntressTracker, float>>((tracker) =>
 					{
 						float level = tracker.GetComponent<CharacterBody>().level;
 						return BaseTargetingRangeCfg.Value + (level - 1f) * LevelTargetingRangeCfg.Value;
 					});
+					c.Emit(OpCodes.Stfld, typeof(HuntressTracker).GetField("maxTrackingDistance"));
 				}
 				else
 				{
 					Debug.LogWarning("ZetTweaks [GameplayModule] - HuntressRangeBuff Failed!");
-				}
-			};
-		}
-
-		private static void BazaarGestureHook()
-		{
-			IL.RoR2.EquipmentSlot.FixedUpdate += (il) =>
-			{
-				ILCursor c = new ILCursor(il);
-
-				bool found = c.TryGotoNext(
-					x => x.MatchLdsfld(typeof(RoR2Content.Items).GetField("AutoCastEquipment")),
-					x => x.MatchCall<Inventory>("GetItemCount")
-				);
-
-				if (found)
-				{
-					c.Index += 2;
-
-					c.EmitDelegate<Func<int, int>>((count) =>
-					{
-						if (SceneInfo.instance.sceneDef.nameToken == "MAP_BAZAAR_TITLE") return 0;
-
-						return count;
-					});
-				}
-				else
-				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - BazaarGestureHook Failed!");
 				}
 			};
 		}
