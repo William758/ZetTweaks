@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using BepInEx;
 using BepInEx.Configuration;
@@ -18,17 +17,14 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.0.3";
+		public const string ModVer = "1.0.4";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
 
+		public static bool lateSetupCompleted = false;
 
 		internal static ArtifactIndex EclipseArtifact = ArtifactIndex.None;
-
-		public static bool LateSetupCompleted = false;
-
-		public static event Action onLateSetupComplete;
 
 
 
@@ -55,7 +51,7 @@ namespace TPDespair.ZetTweaks
 
 		public void Update()
 		{
-			if (LateSetupCompleted)
+			if (lateSetupCompleted)
 			{
 				if (FixTeleShowCfg.Value && TeleShowFix.Enabled) TeleShowFix.SetShouldShow();
 			}
@@ -92,7 +88,6 @@ namespace TPDespair.ZetTweaks
 			{
 				FindIndexes();
 				LateSetup();
-				OnAction();
 
 				orig();
 			};
@@ -112,12 +107,14 @@ namespace TPDespair.ZetTweaks
 
 			GameplayModule.LateInit();
 
-			LateSetupCompleted = true;
+			lateSetupCompleted = true;
 		}
 
 		private static void SetupCompat()
 		{
+			if (PluginLoaded("com.rob.VoidFieldsQoL")) Compat.VoidQuality = true;
 			if (PluginLoaded("com.Borbo.BORBO")) Compat.DisableBossDropTweak = true;
+			if (PluginLoaded("com.Wolfo.YellowPercent")) Compat.DisableBossDropTweak = true;
 			if (PluginLoaded("com.Moffein.ReallyBigTeleporterRadius")) Compat.ReallyBigTeleporter = true;
 			if (PluginLoaded("com.Cyro.NoLockedInteractables") && FixNoLockedCfg.Value) Compat.UnlockInteractables = true;
 			if (PluginLoaded("com.TPDespair.CommandDropletFix")) Compat.DisableCommandDropletFix = true;
@@ -127,17 +124,12 @@ namespace TPDespair.ZetTweaks
 				Compat.DisableBazaarGesture = true;
 			}
 			if (PluginLoaded("Withor.SavageHuntress")) Compat.DisableHuntressRange = true;
+			if (PluginLoaded("HIFU.HuntressAutoaimFix")) Compat.DisableHuntressAimFix = true;
 
 			// oudated mods ???
 			if (PluginLoaded("com.TeaBoneJones.IncreaseHuntressRange")) Compat.DisableHuntressRange = true;
 			if (PluginLoaded("com.FluffyMods.PocketMoney")) Compat.DisableStarterMoney = true;
 			if (PluginLoaded("Rein.GeneralFixes")) Compat.DisableSelfDamageFix = true;
-		}
-
-		private static void OnAction()
-		{
-			Action action = onLateSetupComplete;
-			if (action != null) action();
 		}
 
 
@@ -153,6 +145,8 @@ namespace TPDespair.ZetTweaks
 	public static class Compat
 	{
 		public static bool DisableSelfDamageFix = false;
+		public static bool DisableBazaarGesture = false;
+		public static bool VoidQuality = false;
 		public static bool DisableStarterMoney = false;
 		public static bool DisableBossDropTweak = false;
 		public static bool ReallyBigTeleporter = false;
@@ -160,6 +154,6 @@ namespace TPDespair.ZetTweaks
 		public static bool DisableCommandDropletFix = false;
 		public static bool DisableTeleportLostDroplet = false;
 		public static bool DisableHuntressRange = false;
-		public static bool DisableBazaarGesture = false;
+		public static bool DisableHuntressAimFix = false;
 	}
 }
