@@ -8,6 +8,12 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Prevent Focus Crystal and Crowbar from increasing self-damage.
 
+- Only place PrimordialTeleporter on last stage of a loop.
+
+- Equipment isn't triggered by Gesture in the Bazaar.
+
+- Recover 50% of health and shields when a Void Cell is activated.
+
 - Start the first 5 stages with enough money to open a chest.
 
 - Combat Director gains 10% more credits for first 5 stages.
@@ -35,9 +41,7 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Pickups that go out of bounds are teleported back onto the stage.
 
-- Increase Huntress targeting range by 2m every level.
-
-- Equipment isn't triggered by Gesture in the Bazaar.
+- Increase Huntress targeting range by 2m every level and prioritize enemies near the crosshair.
 
 ## Installation:
 
@@ -46,6 +50,8 @@ Requires Bepinex and HookGenPatcher.
 Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
+
+v1.0.4 - Only place PrimordialTeleporter on last stage of a loop. Recovery when Void Cell is activated. Fix HuntressRange not working with HuntressAutoaimFix.
 
 v1.0.3 - Prevent tweakBossDropRewards from affecting drops with red tier items.
 
