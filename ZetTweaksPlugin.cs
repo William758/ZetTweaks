@@ -17,7 +17,7 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.0.4";
+		public const string ModVer = "1.0.5";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
@@ -26,9 +26,13 @@ namespace TPDespair.ZetTweaks
 
 		internal static ArtifactIndex EclipseArtifact = ArtifactIndex.None;
 
+		internal static BodyIndex turret1BodyIndex = BodyIndex.None;
+		internal static BodyIndex megaDroneBodyIndex = BodyIndex.None;
+		internal static BodyIndex equipDroneBodyIndex = BodyIndex.None;
 
 
-		internal static ConfigFile ConfigFile;
+
+		public static ConfigFile ConfigFile;
 
 		public static ConfigEntry<bool> AutoCompatCfg { get; set; }
 		public static ConfigEntry<bool> FixTeleShowCfg { get; set; }
@@ -97,6 +101,13 @@ namespace TPDespair.ZetTweaks
 		{
 			ArtifactIndex artifactIndex = ArtifactCatalog.FindArtifactIndex("ARTIFACT_ZETECLIFACT");
 			if (artifactIndex != ArtifactIndex.None) EclipseArtifact = artifactIndex;
+
+			BodyIndex bodyIndex = BodyCatalog.FindBodyIndex("Turret1Body");
+			if (bodyIndex != BodyIndex.None) turret1BodyIndex = bodyIndex;
+			bodyIndex = BodyCatalog.FindBodyIndex("MegaDroneBody");
+			if (bodyIndex != BodyIndex.None) megaDroneBodyIndex = bodyIndex;
+			bodyIndex = BodyCatalog.FindBodyIndex("EquipmentDroneBody");
+			if (bodyIndex != BodyIndex.None) equipDroneBodyIndex = bodyIndex;
 		}
 
 		private static void LateSetup()
@@ -112,24 +123,29 @@ namespace TPDespair.ZetTweaks
 
 		private static void SetupCompat()
 		{
-			if (PluginLoaded("com.rob.VoidFieldsQoL")) Compat.VoidQuality = true;
-			if (PluginLoaded("com.Borbo.BORBO")) Compat.DisableBossDropTweak = true;
-			if (PluginLoaded("com.Wolfo.YellowPercent")) Compat.DisableBossDropTweak = true;
 			if (PluginLoaded("com.Moffein.ReallyBigTeleporterRadius")) Compat.ReallyBigTeleporter = true;
 			if (PluginLoaded("com.Cyro.NoLockedInteractables") && FixNoLockedCfg.Value) Compat.UnlockInteractables = true;
-			if (PluginLoaded("com.TPDespair.CommandDropletFix")) Compat.DisableCommandDropletFix = true;
+			if (PluginLoaded("com.Chen.ChensGradiusMod")) Compat.ChenGradius = true;
+
 			if (PluginLoaded("com.xoxfaby.BetterGameplay"))
 			{
-				Compat.DisableTeleportLostDroplet = true;
 				Compat.DisableBazaarGesture = true;
+				Compat.DisableTeleportLostDroplet = true;
 			}
+			if (PluginLoaded("com.Moffein.NoBazaarKickout")) Compat.DisableBazaarPreventKickout = true;
+			if (PluginLoaded("com.rob.VoidFieldsQoL")) Compat.DisableVoidHealthHeal = true;
+			if (PluginLoaded("KevinPione.CellVentHeal")) Compat.DisableVoidHealthHeal = true;
+			if (PluginLoaded("com.Borbo.BORBO")) Compat.DisableBossDropTweak = true;
+			if (PluginLoaded("com.Wolfo.YellowPercent")) Compat.DisableBossDropTweak = true;
+			if (PluginLoaded("com.TPDespair.CommandDropletFix")) Compat.DisableCommandDropletFix = true;
 			if (PluginLoaded("Withor.SavageHuntress")) Compat.DisableHuntressRange = true;
 			if (PluginLoaded("HIFU.HuntressAutoaimFix")) Compat.DisableHuntressAimFix = true;
 
 			// oudated mods ???
-			if (PluginLoaded("com.TeaBoneJones.IncreaseHuntressRange")) Compat.DisableHuntressRange = true;
-			if (PluginLoaded("com.FluffyMods.PocketMoney")) Compat.DisableStarterMoney = true;
 			if (PluginLoaded("Rein.GeneralFixes")) Compat.DisableSelfDamageFix = true;
+			if (PluginLoaded("_Simon.NoBazaarKickOut")) Compat.DisableBazaarPreventKickout = true;
+			if (PluginLoaded("com.FluffyMods.PocketMoney")) Compat.DisableStarterMoney = true;
+			if (PluginLoaded("com.TeaBoneJones.IncreaseHuntressRange")) Compat.DisableHuntressRange = true;
 		}
 
 
@@ -144,13 +160,16 @@ namespace TPDespair.ZetTweaks
 
 	public static class Compat
 	{
-		public static bool DisableSelfDamageFix = false;
-		public static bool DisableBazaarGesture = false;
-		public static bool VoidQuality = false;
-		public static bool DisableStarterMoney = false;
-		public static bool DisableBossDropTweak = false;
 		public static bool ReallyBigTeleporter = false;
 		public static bool UnlockInteractables = false;
+		public static bool ChenGradius = false;
+
+		public static bool DisableSelfDamageFix = false;
+		public static bool DisableBazaarGesture = false;
+		public static bool DisableBazaarPreventKickout = false;
+		public static bool DisableVoidHealthHeal = false;
+		public static bool DisableStarterMoney = false;
+		public static bool DisableBossDropTweak = false;
 		public static bool DisableCommandDropletFix = false;
 		public static bool DisableTeleportLostDroplet = false;
 		public static bool DisableHuntressRange = false;
