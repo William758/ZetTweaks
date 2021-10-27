@@ -12,19 +12,21 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Equipment isn't triggered by Gesture in the Bazaar.
 
-- Recover 50% of health and shields when a Void Cell is activated.
+- Prevent the Newt from kicking you from the Bazaar.
+
+- Recover 50% of health and shields when a VoidCell is activated.
 
 - Start the first 5 stages with enough money to open a chest.
 
-- Combat Director gains 10% more credits for first 5 stages.
+- CombatDirector gains 10% more credits for first 5 stages.
 
-- Decaying boost to money earned from kills while multitudes is enabled.
+- Decaying boost to money earned from kills while Multitudes is enabled.
 
 - Adjust teleporter boss drop chance, reducing amount of boss tier items on large reward count.
 
 - Prevent teleporter from locking interactables.
 
-- Prevent eclipse from affecting small holdout zones.
+- Prevent Eclipse from affecting small holdout zones.
 
 - Adjust base radius and duration of holdout zones:
 
@@ -43,6 +45,14 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Increase Huntress targeting range by 2m every level and prioritize enemies near the crosshair.
 
+- Prevent allied drones from targeting allies after certain items proc.
+
+- EquipmentDrones have a 25% chance to drop equipment after they are destroyed.
+
+- TC280 and GunnerTurret can be repurchased after they are destroyed. ()
+
+- TC280 and EquipmentDrone can appear on any stage where regular drones spawn.
+
 ## Installation:
 
 Requires Bepinex and HookGenPatcher.
@@ -50,6 +60,8 @@ Requires Bepinex and HookGenPatcher.
 Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
+
+v1.0.5 - Prevent Bazaar kickout. Prevent some drones targeting allies. Drones can be repurchased and appear in more areas. EquipmentDrone chance to drop equipment on death.
 
 v1.0.4 - Only place PrimordialTeleporter on last stage of a loop. Recovery when Void Cell is activated. Fix HuntressRange not working with HuntressAutoaimFix.
 
