@@ -2,6 +2,7 @@ using BepInEx.Configuration;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using RoR2;
+using RoR2.CharacterAI;
 using RoR2.Navigation;
 using System;
 using UnityEngine;
@@ -15,6 +16,7 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<bool> FixSelfDamageCfg { get; set; }
 		public static ConfigEntry<bool> FixMeanderTeleporterCfg { get; set; }
 		public static ConfigEntry<bool> BazaarGestureCfg { get; set; }
+		public static ConfigEntry<bool> BazaarPreventKickoutCfg { get; set; }
 		public static ConfigEntry<float> VoidHealthRecoveryCfg { get; set; }
 		public static ConfigEntry<float> VoidShieldRecoveryCfg { get; set; }
 		public static ConfigEntry<float> MoneyChestGivenCfg { get; set; }
@@ -41,6 +43,51 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<bool> TargetSortAngleCfg { get; set; }
 		public static ConfigEntry<float> BaseTargetingRangeCfg { get; set; }
 		public static ConfigEntry<float> LevelTargetingRangeCfg { get; set; }
+		public static ConfigEntry<bool> DroneFriendlyFireFixCfg { get; set; }
+		public static ConfigEntry<float> DroneEquipmentDropCfg { get; set; }
+		public static ConfigEntry<bool> DroneTC280AnywhereCfg { get; set; }
+		public static ConfigEntry<bool> DroneEquipmentAnywhereCfg { get; set; }
+		public static ConfigEntry<bool> DroneTC280RepurchasableCfg { get; set; }
+		public static ConfigEntry<bool> DroneTurretRepurchasableCfg { get; set; }
+
+
+
+		private static readonly Lazy<GameObject> _backupDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/DroneBackupMaster"));
+		private static readonly Lazy<GameObject> _drone1Master = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/Drone1Master"));
+		private static readonly Lazy<GameObject> _flameDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/FlameDroneMaster"));
+		private static readonly Lazy<GameObject> _missileDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/DroneMissileMaster"));
+		private static readonly Lazy<GameObject> _turret1Master = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/Turret1Master"));
+		private static readonly Lazy<GameObject> _megaDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/MegaDroneMaster"));
+		private static readonly Lazy<GameObject> _equipmentDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EquipmentDroneMaster"));
+		private static readonly Lazy<GameObject> _engiTurretMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EngiTurretMaster"));
+		private static readonly Lazy<GameObject> _engiWalkerTurretMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EngiWalkerTurretMaster"));
+		private static readonly Lazy<GameObject> _engiBeamTurretMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EngiBeamTurretMaster"));
+		private static readonly Lazy<GameObject> _beetleGuardAllyMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/BeetleGuardAllyMaster"));
+		private static readonly Lazy<GameObject> _roboBallGreenBuddyMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/roboBallGreenBuddyMaster"));
+		private static readonly Lazy<GameObject> _roboBallRedBuddyMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/roboBallRedBuddyMaster"));
+
+		private static readonly Lazy<SpawnCard> _turret1SpawnCard = new Lazy<SpawnCard>(() => Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenTurret1"));
+		private static readonly Lazy<SpawnCard> _megaDroneSpawnCard = new Lazy<SpawnCard>(() => Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenMegaDrone"));
+		private static readonly Lazy<SpawnCard> _equipDroneSpawnCard = new Lazy<SpawnCard>(() => Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenEquipmentDrone"));
+
+		internal static GameObject BackupDroneMaster { get => _backupDroneMaster.Value; }
+		internal static GameObject Drone1Master { get => _drone1Master.Value; }
+		internal static GameObject FlameDroneMaster { get => _flameDroneMaster.Value; }
+		internal static GameObject MissileDroneMaster { get => _missileDroneMaster.Value; }
+		internal static GameObject Turret1Master { get => _turret1Master.Value; }
+		internal static GameObject MegaDroneMaster { get => _megaDroneMaster.Value; }
+		internal static GameObject EquipmentDroneMaster { get => _equipmentDroneMaster.Value; }
+		internal static GameObject EngiTurretMaster { get => _engiTurretMaster.Value; }
+		internal static GameObject EngiWalkerTurretMaster { get => _engiWalkerTurretMaster.Value; }
+		internal static GameObject EngiBeamTurretMaster { get => _engiBeamTurretMaster.Value; }
+		internal static GameObject BeetleGuardAllyMaster { get => _beetleGuardAllyMaster.Value; }
+		internal static GameObject RoboBallGreenBuddyMaster { get => _roboBallGreenBuddyMaster.Value; }
+		internal static GameObject RoboBallRedBuddyMaster { get => _roboBallRedBuddyMaster.Value; }
+
+		internal static SpawnCard Turret1SpawnCard { get => _turret1SpawnCard.Value; }
+		internal static SpawnCard MegaDroneSpawnCard { get => _megaDroneSpawnCard.Value; }
+		internal static SpawnCard EquipDroneSpawnCard { get => _equipDroneSpawnCard.Value; }
+
 
 
 
@@ -59,12 +106,16 @@ namespace TPDespair.ZetTweaks
 			);
 			FixMeanderTeleporterCfg = Config.Bind(
 				"2b-Gameplay - Fixes", "endloopTeleporter", true,
-				"Spawn Primordial Teleporter on the last stage of a loop."
+				"Always spawn Primordial Teleporter on the last stage of a loop."
 			);
 
 			BazaarGestureCfg = Config.Bind(
 				"2b-Gameplay - QOL", "disableBazaarGesture", true,
 				"Prevent Gesture from firing equipment in Bazaar."
+			);
+			BazaarPreventKickoutCfg = Config.Bind(
+				"2b-Gameplay - QOL", "disableBazaarKickout", true,
+				"Prevent damaging the Newt from kicking players from the Bazaar."
 			);
 			VoidHealthRecoveryCfg = Config.Bind(
 				"2b-Gameplay - QOL", "voidHealthRecovery", 0.5f,
@@ -175,6 +226,31 @@ namespace TPDespair.ZetTweaks
 				"2g-Gameplay - Skill", "levelHuntressTargetingRange", 2f,
 				"Huntress level targeting range. Vanilla is 0"
 			);
+
+			DroneFriendlyFireFixCfg = Config.Bind(
+				"2H-Gameplay - Drone", "droneFriendlyFireFix", true,
+				"Prevent most drones from targeting allies."
+			);
+			DroneEquipmentDropCfg = Config.Bind(
+				"2H-Gameplay - Drone", "droneEquipmentDrop", 0.25f,
+				"Chance for equipment drones to drop their equipment. 1 = 100% chance"
+			);
+			DroneTC280RepurchasableCfg = Config.Bind(
+				"2H-Gameplay - Drone", "droneTC280Repurchasable", true,
+				"Make the TC280 repurchasable after it is destroyed."
+			);
+			DroneTurretRepurchasableCfg = Config.Bind(
+				"2H-Gameplay - Drone", "droneTurretRepurchasable", true,
+				"Make the Gunner Turret repurchasable after it is destroyed."
+			);
+			DroneTC280AnywhereCfg = Config.Bind(
+				"2H-Gameplay - Drone", "droneTC280Anywhere", true,
+				"Allow the TC-280 to spawn anywhere regular drones spawn."
+			);
+			DroneEquipmentAnywhereCfg = Config.Bind(
+				"2H-Gameplay - Drone", "droneEquipmentAnywhere", true,
+				"Allow Equipment Drones to spawn anywhere regular drones spawn."
+			);
 		}
 
 		internal static void Init()
@@ -188,6 +264,8 @@ namespace TPDespair.ZetTweaks
 				if (MultitudeMoneyCfg.Value) GoldFromKillHook();
 
 				MoonBatteryMissionController.onInstanceChangedGlobal += ChangeRequiredBatteries;
+
+				if (DroneTC280AnywhereCfg.Value || DroneEquipmentAnywhereCfg.Value) SceneDirector.onGenerateInteractableCardSelection += AddMissingDroneSpawnCards;
 			}
 		}
 
@@ -202,6 +280,7 @@ namespace TPDespair.ZetTweaks
 				}
 
 				if (BazaarGestureCfg.Value && !Compat.DisableBazaarGesture) BazaarGestureHook();
+				if (BazaarPreventKickoutCfg.Value && !Compat.DisableBazaarPreventKickout) BazaarPreventKickoutHook();
 
 				if (MoneyStageLimitCfg.Value > 0 && !Compat.DisableStarterMoney) SceneDirector.onPostPopulateSceneServer += GiveMoney;
 
@@ -222,6 +301,18 @@ namespace TPDespair.ZetTweaks
 					if (TargetSortAngleCfg.Value && !Compat.DisableHuntressAimFix) HuntressTargetFix();
 					if (!Compat.DisableHuntressRange) HuntressRangeBuff();
 				}
+
+				if (!Compat.ChenGradius)
+				{
+					if (DroneFriendlyFireFixCfg.Value)
+					{
+						Debug.LogWarning("ZetTweaks - Modifying Drone SkillDrivers");
+						ModifyDroneTargeting();
+					}
+
+					HandleDroneDeathHook();
+				}
+				//DroneDecay();
 			}
 		}
 
@@ -345,6 +436,14 @@ namespace TPDespair.ZetTweaks
 			};
 		}
 
+		private static void BazaarPreventKickoutHook()
+		{
+			On.EntityStates.NewtMonster.KickFromShop.FixedUpdate += (orig, self) =>
+			{
+				self.outer.SetNextStateToMain();
+			};
+		}
+
 		private static void VoidRecoveryHook()
 		{
 			On.RoR2.ArenaMissionController.BeginRound += (orig, self) =>
@@ -364,7 +463,7 @@ namespace TPDespair.ZetTweaks
 							if (body)
 							{
 								HealthComponent hc = body.healthComponent;
-								if (!Compat.VoidQuality && healthFraction > 0f) hc.Heal(hc.fullHealth * healthFraction, default, true);
+								if (!Compat.DisableVoidHealthHeal && healthFraction > 0f) hc.Heal(hc.fullHealth * healthFraction, default, true);
 								if (shieldFraction > 0f) hc.RechargeShield(hc.fullShield * shieldFraction);
 							}
 						}
@@ -723,6 +822,205 @@ namespace TPDespair.ZetTweaks
 					Debug.LogWarning("ZetTweaks [GameplayModule] - HuntressRangeBuff Failed!");
 				}
 			};
+		}
+
+		private static void AddMissingDroneSpawnCards(SceneDirector sceneDirector, DirectorCardCategorySelection dccs)
+		{
+			int DroneCatagoryIndex = -1;
+
+			bool basicDroneInDeck = false;
+			bool megaDroneInDeck = false;
+			bool equipDroneInDeck = false;
+
+			for (int i = 0; i < dccs.categories.Length; i++)
+			{
+				DirectorCardCategorySelection.Category cat = dccs.categories[i];
+
+				if (cat.name == "Drones") DroneCatagoryIndex = i;
+
+				for (int j = cat.cards.Length - 1; j >= 0; j--)
+				{
+					DirectorCard obj = cat.cards[j];
+					/*
+					Debug.LogWarning(obj.spawnCard);
+					Debug.LogWarning(obj.selectionWeight);
+					Debug.LogWarning(obj.spawnDistance);
+					Debug.LogWarning(obj.allowAmbushSpawn);
+					Debug.LogWarning(obj.preventOverhead);
+					Debug.LogWarning(obj.minimumStageCompletions);
+					//*/
+					if (!basicDroneInDeck)
+					{
+						if (obj.spawnCard.name == "iscBrokenDrone1") basicDroneInDeck = true;
+						if (obj.spawnCard.name == "iscBrokenDrone2") basicDroneInDeck = true;
+					}
+
+					if (obj.spawnCard.name == "iscBrokenMegaDrone") megaDroneInDeck = true;
+					if (obj.spawnCard.name == "iscBrokenEquipmentDrone") equipDroneInDeck = true;
+				}
+			}
+
+			if (DroneCatagoryIndex != -1 && basicDroneInDeck)
+			{
+				if (DroneTC280AnywhereCfg.Value && !megaDroneInDeck && MegaDroneSpawnCard != null)
+				{
+					DirectorCard megaDroneDirectorCard = new DirectorCard
+					{
+						spawnCard = MegaDroneSpawnCard,
+						selectionWeight = 1,
+						spawnDistance = DirectorCore.MonsterSpawnDistance.Standard,
+						allowAmbushSpawn = true,
+						preventOverhead = false,
+						minimumStageCompletions = 1
+					};
+
+					Debug.LogWarning("Adding iscBrokenMegaDrone DirectorCard into Deck.");
+					dccs.AddCard(DroneCatagoryIndex, megaDroneDirectorCard);
+				}
+
+				if (DroneEquipmentAnywhereCfg.Value && !equipDroneInDeck && EquipDroneSpawnCard != null)
+				{
+					DirectorCard equipDroneDirectorCard = new DirectorCard
+					{
+						spawnCard = EquipDroneSpawnCard,
+						selectionWeight = 2,
+						spawnDistance = DirectorCore.MonsterSpawnDistance.Standard,
+						allowAmbushSpawn = true,
+						preventOverhead = false,
+						minimumStageCompletions = 0
+					};
+
+					Debug.LogWarning("Adding iscBrokenEquipmentDrone DirectorCard into Deck.");
+					dccs.AddCard(DroneCatagoryIndex, equipDroneDirectorCard);
+				}
+			}
+		}
+
+		private static void ModifyDroneTargeting()
+		{
+			AimAtEnemy(Turret1Master);
+			AimAtEnemy(EngiTurretMaster);
+			AimAtEnemy(EngiWalkerTurretMaster);
+			AimAtEnemy(EngiBeamTurretMaster);
+			AimAtEnemy(Drone1Master);
+			AimAtEnemy(MegaDroneMaster);
+			AimAtEnemy(MissileDroneMaster);
+			AimAtEnemy(BackupDroneMaster);
+			AimAtEnemy(FlameDroneMaster);
+			AimAtEnemy(EquipmentDroneMaster);
+			AimAtEnemy(BeetleGuardAllyMaster);
+			AimAtEnemy(RoboBallGreenBuddyMaster);
+			AimAtEnemy(RoboBallRedBuddyMaster);
+		}
+
+		public static void AimAtEnemy(GameObject masterObject)
+		{
+			AimAtEnemy(masterObject.GetComponents<AISkillDriver>());
+		}
+
+		public static void AimAtEnemy(AISkillDriver[] skillDrivers)
+		{
+			foreach (var skillDriver in skillDrivers) skillDriver.aimType = AISkillDriver.AimType.AtCurrentEnemy;
+		}
+
+		private static void DroneDecay()
+		{
+			On.RoR2.CharacterMaster.OnBodyStart += (orig, master, body) =>
+			{
+				if (NetworkServer.active && master && body)
+				{
+					if (body.bodyIndex == ZetTweaksPlugin.megaDroneBodyIndex)
+					{
+						master.inventory.GiveItem(RoR2Content.Items.HealthDecay, 10);
+					}
+					if (body.bodyIndex == ZetTweaksPlugin.equipDroneBodyIndex)
+					{
+						master.inventory.GiveItem(RoR2Content.Items.HealthDecay, 10);
+					}
+				}
+
+				orig(master, body);
+			};
+		}
+
+		private static void HandleDroneDeathHook()
+		{
+			IL.RoR2.CharacterMaster.OnBodyDeath += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				c.Index = 0;
+
+				c.Emit(OpCodes.Ldarg, 1);
+				c.Emit(OpCodes.Ldarg, 0);
+				c.EmitDelegate<Action<CharacterBody, CharacterMaster>>((body, master) =>
+				{
+					OnDroneBodyDeath(master, body);
+				});
+			};
+		}
+
+		private static void OnDroneBodyDeath(CharacterMaster master, CharacterBody body)
+		{
+			if (NetworkServer.active && master && body)
+			{
+				if (master.IsDeadAndOutOfLivesServer())
+				{
+					BodyIndex bodyIndex = body.bodyIndex;
+					if (bodyIndex != BodyIndex.None)
+					{
+						if (bodyIndex == ZetTweaksPlugin.turret1BodyIndex)
+						{
+							if (DroneTurretRepurchasableCfg.Value && Turret1SpawnCard != null) SpawnDrone(Turret1SpawnCard, body);
+						}
+						if (bodyIndex == ZetTweaksPlugin.megaDroneBodyIndex)
+						{
+							if (DroneTC280RepurchasableCfg.Value && MegaDroneSpawnCard != null) SpawnDrone(MegaDroneSpawnCard, body);
+						}
+						if (bodyIndex == ZetTweaksPlugin.equipDroneBodyIndex)
+						{
+							if (Util.CheckRoll(DroneEquipmentDropCfg.Value * 100f))
+							{
+								EquipmentIndex equipIndex = master.inventory.currentEquipmentIndex;
+								if (equipIndex != EquipmentIndex.None)
+								{
+									PickupIndex pickupIndex = PickupCatalog.FindPickupIndex(equipIndex);
+
+									GenericPickupController.CreatePickupInfo pickupInfo = new GenericPickupController.CreatePickupInfo
+									{
+										position = body.corePosition,
+										rotation = Quaternion.identity,
+										pickupIndex = pickupIndex
+									};
+
+									GenericPickupController.CreatePickup(pickupInfo);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		private static void SpawnDrone(SpawnCard spawnCard, CharacterBody body)
+		{
+			DirectorPlacementRule placementRule = new DirectorPlacementRule
+			{
+				placementMode = DirectorPlacementRule.PlacementMode.NearestNode,
+				position = body.corePosition,
+			};
+
+			GameObject gameObject = DirectorCore.instance.TrySpawnObject(new DirectorSpawnRequest(spawnCard, placementRule, new Xoroshiro128Plus(0UL)));
+			if (gameObject)
+			{
+				PurchaseInteraction purchaseInteraction = gameObject.GetComponent<PurchaseInteraction>();
+				if (purchaseInteraction && purchaseInteraction.costType == CostTypeIndex.Money)
+				{
+					purchaseInteraction.Networkcost = Run.instance.GetDifficultyScaledCost(purchaseInteraction.cost);
+				}
+
+				if (body.transform) gameObject.transform.rotation = body.transform.rotation;
+			}
 		}
 	}
 }
