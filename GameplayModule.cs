@@ -52,23 +52,23 @@ namespace TPDespair.ZetTweaks
 
 
 
-		private static readonly Lazy<GameObject> _backupDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/DroneBackupMaster"));
-		private static readonly Lazy<GameObject> _drone1Master = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/Drone1Master"));
-		private static readonly Lazy<GameObject> _flameDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/FlameDroneMaster"));
-		private static readonly Lazy<GameObject> _missileDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/DroneMissileMaster"));
-		private static readonly Lazy<GameObject> _turret1Master = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/Turret1Master"));
-		private static readonly Lazy<GameObject> _megaDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/MegaDroneMaster"));
-		private static readonly Lazy<GameObject> _equipmentDroneMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EquipmentDroneMaster"));
-		private static readonly Lazy<GameObject> _engiTurretMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EngiTurretMaster"));
-		private static readonly Lazy<GameObject> _engiWalkerTurretMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EngiWalkerTurretMaster"));
-		private static readonly Lazy<GameObject> _engiBeamTurretMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/EngiBeamTurretMaster"));
-		private static readonly Lazy<GameObject> _beetleGuardAllyMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/BeetleGuardAllyMaster"));
-		private static readonly Lazy<GameObject> _roboBallGreenBuddyMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/roboBallGreenBuddyMaster"));
-		private static readonly Lazy<GameObject> _roboBallRedBuddyMaster = new Lazy<GameObject>(() => Resources.Load<GameObject>("prefabs/charactermasters/roboBallRedBuddyMaster"));
+		private static readonly Lazy<GameObject> _backupDroneMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/DroneBackupMaster"));
+		private static readonly Lazy<GameObject> _drone1Master = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/Drone1Master"));
+		private static readonly Lazy<GameObject> _flameDroneMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/FlameDroneMaster"));
+		private static readonly Lazy<GameObject> _missileDroneMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/DroneMissileMaster"));
+		private static readonly Lazy<GameObject> _turret1Master = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/Turret1Master"));
+		private static readonly Lazy<GameObject> _megaDroneMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/MegaDroneMaster"));
+		private static readonly Lazy<GameObject> _equipmentDroneMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/EquipmentDroneMaster"));
+		private static readonly Lazy<GameObject> _engiTurretMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/EngiTurretMaster"));
+		private static readonly Lazy<GameObject> _engiWalkerTurretMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/EngiWalkerTurretMaster"));
+		private static readonly Lazy<GameObject> _engiBeamTurretMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/EngiBeamTurretMaster"));
+		private static readonly Lazy<GameObject> _beetleGuardAllyMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/BeetleGuardAllyMaster"));
+		private static readonly Lazy<GameObject> _roboBallGreenBuddyMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/roboBallGreenBuddyMaster"));
+		private static readonly Lazy<GameObject> _roboBallRedBuddyMaster = new Lazy<GameObject>(() => LegacyResourcesAPI.Load<GameObject>("prefabs/charactermasters/roboBallRedBuddyMaster"));
 
-		private static readonly Lazy<SpawnCard> _turret1SpawnCard = new Lazy<SpawnCard>(() => Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenTurret1"));
-		private static readonly Lazy<SpawnCard> _megaDroneSpawnCard = new Lazy<SpawnCard>(() => Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenMegaDrone"));
-		private static readonly Lazy<SpawnCard> _equipDroneSpawnCard = new Lazy<SpawnCard>(() => Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenEquipmentDrone"));
+		private static readonly Lazy<SpawnCard> _turret1SpawnCard = new Lazy<SpawnCard>(() => LegacyResourcesAPI.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenTurret1"));
+		private static readonly Lazy<SpawnCard> _megaDroneSpawnCard = new Lazy<SpawnCard>(() => LegacyResourcesAPI.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenMegaDrone"));
+		private static readonly Lazy<SpawnCard> _equipDroneSpawnCard = new Lazy<SpawnCard>(() => LegacyResourcesAPI.Load<InteractableSpawnCard>("spawncards/interactablespawncard/iscBrokenEquipmentDrone"));
 
 		internal static GameObject BackupDroneMaster { get => _backupDroneMaster.Value; }
 		internal static GameObject Drone1Master { get => _drone1Master.Value; }
@@ -216,7 +216,7 @@ namespace TPDespair.ZetTweaks
 			);
 			TargetSortAngleCfg = Config.Bind(
 				"2g-Gameplay - Skill", "sortHuntressByAngle", true,
-				"Prioritize targets closer to the targetiing reticule."
+				"Prioritize targets closer to the targeting reticule."
 			);
 			BaseTargetingRangeCfg = Config.Bind(
 				"2g-Gameplay - Skill", "baseHuntressTargetingRange", 60f,
@@ -312,7 +312,8 @@ namespace TPDespair.ZetTweaks
 
 					HandleDroneDeathHook();
 				}
-				//DroneDecay();
+
+				DroneDecay();
 			}
 		}
 
@@ -327,7 +328,7 @@ namespace TPDespair.ZetTweaks
 				ILLabel jumpTo = null;
 
 				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(17),
+					x => x.MatchLdloc(21),
 					x => x.MatchLdcI4(0),
 					x => x.MatchBle(out jumpTo)
 				);
@@ -338,9 +339,9 @@ namespace TPDespair.ZetTweaks
 
 					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldloc, 1);
-					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, attacker) =>
+					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, atkBody) =>
 					{
-						if (healthComponent.body == attacker) return true;
+						if (healthComponent.body == atkBody) return true;
 
 						return false;
 					});
@@ -362,7 +363,7 @@ namespace TPDespair.ZetTweaks
 				ILLabel jumpTo = null;
 
 				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(18),
+					x => x.MatchLdloc(26),
 					x => x.MatchLdcI4(0),
 					x => x.MatchBle(out jumpTo)
 				);
@@ -373,9 +374,9 @@ namespace TPDespair.ZetTweaks
 
 					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldloc, 1);
-					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, attacker) =>
+					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, atkBody) =>
 					{
-						if (healthComponent.body == attacker) return true;
+						if (healthComponent.body == atkBody) return true;
 
 						return false;
 					});
@@ -397,7 +398,7 @@ namespace TPDespair.ZetTweaks
 					bool flag = Run.instance.NetworkstageClearCount % Run.stagesPerLoop == Run.stagesPerLoop - 1;
 					string cardName = flag ? "iscLunarTeleporter" : "iscTeleporter";
 
-					SpawnCard spawnCard = Resources.Load<InteractableSpawnCard>("spawncards/interactablespawncard/" + cardName);
+					SpawnCard spawnCard = LegacyResourcesAPI.Load<InteractableSpawnCard>("spawncards/interactablespawncard/" + cardName);
 
 					if (spawnCard) self.teleporterSpawnCard = spawnCard;
 					else Debug.LogWarning("ZetTweaks [GameplayModule] - interactablespawncard/" + cardName + " could not be found!");
@@ -530,8 +531,9 @@ namespace TPDespair.ZetTweaks
 
 				if (found)
 				{
-					c.Index += 2;
+					c.Index += 3;
 
+					c.Emit(OpCodes.Ldloc, 2);
 					c.EmitDelegate<Func<uint, uint>>((reward) =>
 					{
 						int playerCount = Run.instance.participatingPlayerCount;
@@ -551,6 +553,7 @@ namespace TPDespair.ZetTweaks
 
 						return reward;
 					});
+					c.Emit(OpCodes.Stloc, 2);
 				}
 				else
 				{
@@ -574,7 +577,7 @@ namespace TPDespair.ZetTweaks
 				{
 					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldloc, 6);
-					c.Emit(OpCodes.Ldloc, 3);
+					c.Emit(OpCodes.Ldloc, 2);
 					c.EmitDelegate<Func<float, BossGroup, int, int, float>>((rng, bossGroup, i, count) =>
 					{
 						if (bossGroup.forceTier3Reward) return rng;
@@ -612,7 +615,10 @@ namespace TPDespair.ZetTweaks
 
 		private static void ChangeRequiredBatteries()
 		{
-			MoonBatteryMissionController.instance._numRequiredBatteries = Mathf.Clamp(MoonHoldoutZonesCfg.Value, 1, 4);
+			if (MoonBatteryMissionController.instance)
+			{
+				MoonBatteryMissionController.instance._numRequiredBatteries = Mathf.Clamp(MoonHoldoutZonesCfg.Value, 1, 4);
+			}
 		}
 
 		private static void HoldoutZoneHook()
@@ -746,7 +752,7 @@ namespace TPDespair.ZetTweaks
 						SpawnCard spawnCard = ScriptableObject.CreateInstance<SpawnCard>();
 						spawnCard.hullSize = HullClassification.Human;
 						spawnCard.nodeGraphType = MapNodeGroup.GraphType.Ground;
-						spawnCard.prefab = Resources.Load<GameObject>("SpawnCards/HelperPrefab");
+						spawnCard.prefab = LegacyResourcesAPI.Load<GameObject>("SpawnCards/HelperPrefab");
 
 						DirectorPlacementRule placementRule = new DirectorPlacementRule
 						{
@@ -802,7 +808,7 @@ namespace TPDespair.ZetTweaks
 			{
 				ILCursor c = new ILCursor(il);
 
-				bool found = c.TryGotoNext( MoveType.After,
+				bool found = c.TryGotoNext(MoveType.After,
 					x => x.MatchCallOrCallvirt<HuntressTracker>("SearchForTarget")
 				);
 
@@ -845,7 +851,6 @@ namespace TPDespair.ZetTweaks
 					Debug.LogWarning(obj.spawnCard);
 					Debug.LogWarning(obj.selectionWeight);
 					Debug.LogWarning(obj.spawnDistance);
-					Debug.LogWarning(obj.allowAmbushSpawn);
 					Debug.LogWarning(obj.preventOverhead);
 					Debug.LogWarning(obj.minimumStageCompletions);
 					//*/
@@ -869,7 +874,6 @@ namespace TPDespair.ZetTweaks
 						spawnCard = MegaDroneSpawnCard,
 						selectionWeight = 1,
 						spawnDistance = DirectorCore.MonsterSpawnDistance.Standard,
-						allowAmbushSpawn = true,
 						preventOverhead = false,
 						minimumStageCompletions = 1
 					};
@@ -885,7 +889,6 @@ namespace TPDespair.ZetTweaks
 						spawnCard = EquipDroneSpawnCard,
 						selectionWeight = 2,
 						spawnDistance = DirectorCore.MonsterSpawnDistance.Standard,
-						allowAmbushSpawn = true,
 						preventOverhead = false,
 						minimumStageCompletions = 0
 					};
@@ -922,7 +925,7 @@ namespace TPDespair.ZetTweaks
 		{
 			foreach (var skillDriver in skillDrivers) skillDriver.aimType = AISkillDriver.AimType.AtCurrentEnemy;
 		}
-
+		
 		private static void DroneDecay()
 		{
 			On.RoR2.CharacterMaster.OnBodyStart += (orig, master, body) =>
@@ -942,7 +945,7 @@ namespace TPDespair.ZetTweaks
 				orig(master, body);
 			};
 		}
-
+		
 		private static void HandleDroneDeathHook()
 		{
 			IL.RoR2.CharacterMaster.OnBodyDeath += (il) =>
@@ -994,6 +997,8 @@ namespace TPDespair.ZetTweaks
 									};
 
 									GenericPickupController.CreatePickup(pickupInfo);
+
+									master.inventory.SetEquipmentIndex(EquipmentIndex.None);
 								}
 							}
 						}
