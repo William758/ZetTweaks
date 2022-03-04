@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using UnityEngine;
 using BepInEx;
 using BepInEx.Configuration;
 using RoR2;
@@ -17,11 +19,12 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.0.5";
+		public const string ModVer = "1.1.0";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
 
+		private static bool lateSetupAttempted = false;
 		public static bool lateSetupCompleted = false;
 
 		internal static ArtifactIndex EclipseArtifact = ArtifactIndex.None;
@@ -51,6 +54,7 @@ namespace TPDespair.ZetTweaks
 
 			GameplayModule.Init();
 			OnLogBookControllerReady();
+			OnMainMenuEnter();
 		}
 
 		public void Update()
@@ -71,7 +75,7 @@ namespace TPDespair.ZetTweaks
 				"0a-Core - Compatibility", "enableAutoCompat", true,
 				"Enable Automatic Compatibility. Changes settings based on other installed mods."
 			);
-			
+
 			// 0b - Fixes
 
 			FixTeleShowCfg = Config.Bind(
@@ -90,10 +94,45 @@ namespace TPDespair.ZetTweaks
 		{
 			On.RoR2.UI.LogBook.LogBookController.Init += (orig) =>
 			{
-				FindIndexes();
-				LateSetup();
+				try
+				{
+					if (!lateSetupAttempted)
+					{
+						lateSetupAttempted = true;
+
+						FindIndexes();
+						LateSetup();
+					}
+				}
+				catch (Exception ex)
+				{
+					Debug.LogError(ex);
+				}
 
 				orig();
+			};
+		}
+
+		private static void OnMainMenuEnter()
+		{
+			On.RoR2.UI.MainMenu.BaseMainMenuScreen.OnEnter += (orig, self, controller) =>
+			{
+				orig(self, controller);
+
+				try
+				{
+					if (!lateSetupAttempted)
+					{
+						lateSetupAttempted = true;
+
+						FindIndexes();
+						LateSetup();
+					}
+				}
+				catch (Exception ex)
+				{
+					Debug.LogError(ex);
+				}
 			};
 		}
 
@@ -118,6 +157,7 @@ namespace TPDespair.ZetTweaks
 
 			GameplayModule.LateInit();
 
+			Debug.LogWarning("ZetTweaks - LateSetup Complete!");
 			lateSetupCompleted = true;
 		}
 
@@ -134,6 +174,7 @@ namespace TPDespair.ZetTweaks
 			}
 			if (PluginLoaded("com.Moffein.NoBazaarKickout")) Compat.DisableBazaarPreventKickout = true;
 			if (PluginLoaded("com.rob.VoidFieldsQoL")) Compat.DisableVoidHealthHeal = true;
+			if (PluginLoaded("com.Anreol.VoidQoL")) Compat.DisableVoidHealthHeal = true;
 			if (PluginLoaded("KevinPione.CellVentHeal")) Compat.DisableVoidHealthHeal = true;
 			if (PluginLoaded("com.Borbo.BORBO")) Compat.DisableBossDropTweak = true;
 			if (PluginLoaded("com.Wolfo.YellowPercent")) Compat.DisableBossDropTweak = true;
