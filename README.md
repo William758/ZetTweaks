@@ -61,6 +61,10 @@ Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
 
+v1.1.2 - Check for PickupPickupController on out of bounds items. Add ShareSuite support for startingMoney. Fix VoidCell Holdout Radius and made finished VoidCell scale bubble based on actual radius.
+
+v1.1.1 - Removed debug drone health decay.
+
 v1.1.0 - Updated for latest game version.
 
 v1.0.5 - Prevent Bazaar kickout. Prevent some drones targeting allies. Drones can be repurchased and appear in more areas. EquipmentDrone chance to drop equipment on death.
