@@ -19,7 +19,7 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.1.0";
+		public const string ModVer = "1.1.2";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
@@ -152,6 +152,8 @@ namespace TPDespair.ZetTweaks
 		private static void LateSetup()
 		{
 			if (FixTeleShowCfg.Value && TeleShowFix.Enabled) TeleShowFix.Init();
+
+			if (GameplayModule.MoneyStageLimitCfg.Value > 0 && !Compat.DisableStarterMoney && ShareSuiteCompat.Enabled) ShareSuiteCompat.Init();
 
 			if (AutoCompatCfg.Value) SetupCompat();
 
