@@ -8,6 +8,8 @@ using System;
 using UnityEngine;
 using UnityEngine.Networking;
 
+using EntityStates.Missions.Arena.NullWard;
+
 namespace TPDespair.ZetTweaks
 {
 	public static class GameplayModule
@@ -32,6 +34,8 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<float> TeleTimeCfg { get; set; }
 		public static ConfigEntry<float> VoidRadiusCfg { get; set; }
 		public static ConfigEntry<float> VoidTimeCfg { get; set; }
+		public static ConfigEntry<float> VoidBossRadiusCfg { get; set; }
+		public static ConfigEntry<float> VoidBossTimeCfg { get; set; }
 		public static ConfigEntry<float> MassRadiusCfg { get; set; }
 		public static ConfigEntry<float> MassTimeCfg { get; set; }
 		public static ConfigEntry<float> ShipRadiusCfg { get; set; }
@@ -87,7 +91,6 @@ namespace TPDespair.ZetTweaks
 		internal static SpawnCard Turret1SpawnCard { get => _turret1SpawnCard.Value; }
 		internal static SpawnCard MegaDroneSpawnCard { get => _megaDroneSpawnCard.Value; }
 		internal static SpawnCard EquipDroneSpawnCard { get => _equipDroneSpawnCard.Value; }
-
 
 
 
@@ -179,6 +182,14 @@ namespace TPDespair.ZetTweaks
 			VoidTimeCfg = Config.Bind(
 				"2e-Gameplay - HoldoutZone", "voidHoldoutTime", 45f,
 				"Base duration of void field holdout zone. Vanilla is 60"
+			);
+			VoidBossRadiusCfg = Config.Bind(
+				"2e-Gameplay - HoldoutZone", "voidBossHoldoutRadius", 20f,
+				"Base radius of deep void holdout zone. Vanilla is 20"
+			);
+			VoidBossTimeCfg = Config.Bind(
+				"2e-Gameplay - HoldoutZone", "voidBossHoldoutTime", 45f,
+				"Base duration of deep void holdout zone. Vanilla is 60"
 			);
 			MassRadiusCfg = Config.Bind(
 				"2e-Gameplay - HoldoutZone", "massHoldoutRadius", 30f,
@@ -287,7 +298,11 @@ namespace TPDespair.ZetTweaks
 				if (BossDropTweakCfg.Value && !Compat.DisableBossDropTweak) BossDropHook();
 				if (UnlockInteractablesCfg.Value || Compat.UnlockInteractables) UnlockInteractablesHook();
 
-				if (ModifyHoldoutValueCfg.Value || EclipseHoldoutLimitCfg.Value) HoldoutZoneHook();
+				if (ModifyHoldoutValueCfg.Value || EclipseHoldoutLimitCfg.Value)
+				{
+					VoidCellHook();
+					HoldoutZoneHook();
+				}
 
 				if (CommandDropletFixCfg.Value && !Compat.DisableCommandDropletFix) CommandDropletFix();
 				if (TeleportLostDropletCfg.Value && !Compat.DisableTeleportLostDroplet)
@@ -313,7 +328,7 @@ namespace TPDespair.ZetTweaks
 					HandleDroneDeathHook();
 				}
 
-				DroneDecay();
+				//DroneDecay();
 			}
 		}
 
@@ -482,9 +497,16 @@ namespace TPDespair.ZetTweaks
 					int scaledCost = Run.instance.GetDifficultyScaledCost(25);
 					uint money = 1u + (uint)Mathf.Round(scaledCost * MoneyChestGivenCfg.Value);
 
-					foreach (PlayerCharacterMasterController pcmc in PlayerCharacterMasterController.instances)
+					if (ShareSuiteCompat.Enabled && ShareSuiteCompat.moneyMethodFound)
 					{
-						pcmc.master.GiveMoney(money);
+						ShareSuiteCompat.AddMoneyShareSuite((int)money);
+					}
+					else
+					{
+						foreach (PlayerCharacterMasterController pcmc in PlayerCharacterMasterController.instances)
+						{
+							pcmc.master.GiveMoney(money);
+						}
 					}
 				}
 			}
@@ -621,7 +643,80 @@ namespace TPDespair.ZetTweaks
 			}
 		}
 
-		private static void HoldoutZoneHook()
+		private static float VoidCellExitRadius = 15f;
+
+		private static void VoidCellHook()
+		{
+			On.EntityStates.Missions.Arena.NullWard.NullWardBaseState.OnEnter += (orig, self) =>
+			{
+				float targetRadius = ModifyHoldoutValueCfg.Value ? VoidRadiusCfg.Value : NullWardBaseState.wardRadiusOn;
+
+				if (Run.instance && EclipseHoldoutLimitCfg.Value)
+				{
+					bool isEclipse = Run.instance.selectedDifficulty >= DifficultyIndex.Eclipse2;
+					if (ZetTweaksPlugin.EclipseArtifact != ArtifactIndex.None && RunArtifactManager.instance.IsArtifactEnabled(ZetTweaksPlugin.EclipseArtifact)) isEclipse = true;
+
+					if (isEclipse)
+					{
+						if (targetRadius <= 20f) targetRadius *= 2f;
+						else if (targetRadius < 40f) targetRadius = 40f;
+					}
+				}
+
+				NullWardBaseState.wardRadiusOn = targetRadius;
+
+				orig(self);
+			};
+
+			On.EntityStates.Missions.Arena.NullWard.Active.OnExit += (orig, self) =>
+			{
+				HoldoutZoneController holdoutZoneController = self.holdoutZoneController;
+				if (holdoutZoneController)
+				{
+					VoidCellExitRadius = holdoutZoneController.currentRadius;
+
+					ChildLocator childLocator = self.childLocator;
+					if (childLocator)
+					{
+						Transform transform = self.childLocator.FindChild("CompleteEffect");
+						if (transform)
+						{
+							float scale = VoidCellExitRadius * 0.933f;
+							transform.localScale = new Vector3(scale, scale, scale);
+						}
+					}
+				}
+
+				orig(self);
+			};
+
+
+
+            IL.EntityStates.Missions.Arena.NullWard.Complete.OnEnter += ReplaceWardRadius;
+			IL.EntityStates.Missions.Arena.NullWard.Complete.FixedUpdate += ReplaceWardRadius;
+		}
+
+        private static void ReplaceWardRadius(ILContext il)
+        {
+			ILCursor c = new ILCursor(il);
+
+			bool found = c.TryGotoNext(
+				x => x.MatchLdsfld(typeof(NullWardBaseState).GetField("wardRadiusOn"))
+			);
+
+			if (found)
+			{
+				c.Index += 1;
+
+				c.Emit(OpCodes.Pop);
+				c.EmitDelegate<Func<float>>(() =>
+				{
+					return Mathf.Max(10f, VoidCellExitRadius);
+				});
+			}
+		}
+
+        private static void HoldoutZoneHook()
 		{
 			On.RoR2.HoldoutZoneController.Awake += (orig, self) =>
 			{
@@ -648,12 +743,23 @@ namespace TPDespair.ZetTweaks
 			SceneDef sceneDefForCurrentScene = SceneCatalog.GetSceneDefForCurrentScene();
 			string sceneName = sceneDefForCurrentScene ? sceneDefForCurrentScene.baseSceneName : "";
 
-			if (sceneName == "arena" && !Compat.ReallyBigTeleporter)
+			//Debug.LogWarning("Scene - " + sceneName + "]");
+			//Debug.LogWarning("HoldoutZone Base - Radius : " + self.baseRadius + "   Duration : " + self.baseChargeDuration);
+
+			if (sceneName == "arena")
 			{
 				if (self.baseRadius == 15f && self.baseChargeDuration == 60f)
 				{
 					self.baseRadius = VoidRadiusCfg.Value;
 					self.baseChargeDuration = VoidTimeCfg.Value;
+				}
+			}
+			else if (sceneName == "voidstage")
+			{
+				if (self.baseRadius == 20f && self.baseChargeDuration == 60f)
+				{
+					self.baseRadius = VoidBossRadiusCfg.Value;
+					self.baseChargeDuration = VoidBossTimeCfg.Value;
 				}
 			}
 			else if (sceneName == "moon2")
@@ -694,9 +800,11 @@ namespace TPDespair.ZetTweaks
 					self.baseChargeDuration = TeleTimeCfg.Value;
 				}
 			}
+
+			//Debug.LogWarning("HoldoutZone New - Radius : " + self.baseRadius + "   Duration : " + self.baseChargeDuration);
 		}
 
-		private static void CommandDropletFix()
+        private static void CommandDropletFix()
 		{
 			IL.RoR2.Artifacts.CommandArtifactManager.OnDropletHitGroundServer += (il) =>
 			{
@@ -747,7 +855,7 @@ namespace TPDespair.ZetTweaks
 			{
 				if (self.zoneType == MapZone.ZoneType.OutOfBounds)
 				{
-					if (collider.GetComponent<PickupDropletController>() || collider.GetComponent<GenericPickupController>())
+					if (ColliderPickup(collider))
 					{
 						SpawnCard spawnCard = ScriptableObject.CreateInstance<SpawnCard>();
 						spawnCard.hullSize = HullClassification.Human;
@@ -775,6 +883,14 @@ namespace TPDespair.ZetTweaks
 
 				orig(self, collider);
 			};
+		}
+
+		private static bool ColliderPickup(Collider collider) {
+			if (collider.GetComponent<PickupDropletController>()) return true;
+			if (collider.GetComponent<GenericPickupController>()) return true;
+			if (collider.GetComponent<PickupPickerController>()) return true;
+
+			return false;
 		}
 
 		private static void HuntressTargetFix()
