@@ -19,7 +19,7 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.1.2";
+		public const string ModVer = "1.1.3";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
@@ -59,6 +59,8 @@ namespace TPDespair.ZetTweaks
 
 		public void Update()
 		{
+			//DebugDrops();
+
 			if (lateSetupCompleted)
 			{
 				if (FixTeleShowCfg.Value && TeleShowFix.Enabled) TeleShowFix.SetShouldShow();
@@ -189,6 +191,7 @@ namespace TPDespair.ZetTweaks
 			if (PluginLoaded("_Simon.NoBazaarKickOut")) Compat.DisableBazaarPreventKickout = true;
 			if (PluginLoaded("com.FluffyMods.PocketMoney")) Compat.DisableStarterMoney = true;
 			if (PluginLoaded("com.TeaBoneJones.IncreaseHuntressRange")) Compat.DisableHuntressRange = true;
+			if (PluginLoaded("com.Elysium.ScalingBloodShrines")) Compat.DisableBloodShrineScale = true;
 		}
 
 
@@ -197,6 +200,38 @@ namespace TPDespair.ZetTweaks
 		{
 			return BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(key);
 		}
+
+
+		/*
+		private static void DebugDrops()
+		{
+			if (Input.GetKeyDown(KeyCode.F2))
+			{
+				var transform = PlayerCharacterMasterController.instances[0].master.GetBodyObject().transform;
+
+				CreateDroplet(RoR2Content.Equipment.BurnNearby, transform.position + new Vector3(-5f, 5f, 5f));
+				CreateDroplet(RoR2Content.Items.BeetleGland, transform.position + new Vector3(0f, 5f, 7.5f));
+				//CreateDroplet(Catalog.Equip.AffixRed, transform.position + new Vector3(5f, 5f, 5f));
+				//CreateDroplet(Catalog.Equip.AffixHaunted, transform.position + new Vector3(-5f, 5f, -5f));
+				//CreateDroplet(Catalog.Equip.AffixPoison, transform.position + new Vector3(0f, 5f, -7.5f));
+				//CreateDroplet(Catalog.Equip.AffixLunar, transform.position + new Vector3(5f, 5f, -5f));
+			}
+		}
+
+		private static void CreateDroplet(EquipmentDef def, Vector3 pos)
+		{
+			if (!def) return;
+
+			PickupDropletController.CreatePickupDroplet(PickupCatalog.FindPickupIndex(def.equipmentIndex), pos, Vector3.zero);
+		}
+
+		private static void CreateDroplet(ItemDef def, Vector3 pos)
+		{
+			if (!def) return;
+
+			PickupDropletController.CreatePickupDroplet(PickupCatalog.FindPickupIndex(def.itemIndex), pos, Vector3.zero);
+		}
+		//*/
 	}
 
 
@@ -217,5 +252,6 @@ namespace TPDespair.ZetTweaks
 		public static bool DisableTeleportLostDroplet = false;
 		public static bool DisableHuntressRange = false;
 		public static bool DisableHuntressAimFix = false;
+		public static bool DisableBloodShrineScale = false;
 	}
 }
