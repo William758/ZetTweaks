@@ -23,6 +23,7 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<float> VoidShieldRecoveryCfg { get; set; }
 		public static ConfigEntry<float> MoneyChestGivenCfg { get; set; }
 		public static ConfigEntry<int> MoneyStageLimitCfg { get; set; }
+		public static ConfigEntry<float> BloodShrineScaleCfg { get; set; }
 		public static ConfigEntry<float> DirectorMoneyCfg { get; set; }
 		public static ConfigEntry<int> DirectorStageLimitCfg { get; set; }
 		public static ConfigEntry<bool> MultitudeMoneyCfg { get; set; }
@@ -41,6 +42,7 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<float> ShipRadiusCfg { get; set; }
 		public static ConfigEntry<float> ShipTimeCfg { get; set; }
 		public static ConfigEntry<int> MoonHoldoutZonesCfg { get; set; }
+		public static ConfigEntry<int> VoidBossHoldoutZonesCfg { get; set; }
 		public static ConfigEntry<bool> CommandDropletFixCfg { get; set; }
 		public static ConfigEntry<bool> TeleportLostDropletCfg { get; set; }
 		public static ConfigEntry<bool> ModifyHuntressAimCfg { get; set; }
@@ -131,11 +133,15 @@ namespace TPDespair.ZetTweaks
 
 			MoneyChestGivenCfg = Config.Bind(
 				"2c-Gameplay - Economy", "startingMoney", 1.25f,
-				"Money given at stage start measured in chests."
+				"Money given at stage start (measured in chests)."
 			);
 			MoneyStageLimitCfg = Config.Bind(
 				"2c-Gameplay - Economy", "stageMoneyLimit", 5,
 				"Last stage to give start money. 0 to disable."
+			);
+			BloodShrineScaleCfg = Config.Bind(
+				"2c-Gameplay - Economy", "bloodShrineScale", 2f,
+				"Minimum money given (measured in chests) when bloodshrine takes 100% health. 0 to disable."
 			);
 			DirectorMoneyCfg = Config.Bind(
 				"2c-Gameplay - Economy", "directorMoney", 1.1f,
@@ -184,7 +190,7 @@ namespace TPDespair.ZetTweaks
 				"Base duration of void field holdout zone. Vanilla is 60"
 			);
 			VoidBossRadiusCfg = Config.Bind(
-				"2e-Gameplay - HoldoutZone", "voidBossHoldoutRadius", 20f,
+				"2e-Gameplay - HoldoutZone", "voidBossHoldoutRadius", 30f,
 				"Base radius of deep void holdout zone. Vanilla is 20"
 			);
 			VoidBossTimeCfg = Config.Bind(
@@ -210,6 +216,10 @@ namespace TPDespair.ZetTweaks
 			MoonHoldoutZonesCfg = Config.Bind(
 				"2e-Gameplay - HoldoutZone", "moonHoldoutZones", 3,
 				"Pillars required to fight Mithrix. Range : 1 - 4"
+			);
+			VoidBossHoldoutZonesCfg = Config.Bind(
+				"2e-Gameplay - HoldoutZone", "voidBossHoldoutZones", 3,
+				"Pillars required to fight Voidling. Range : 1 - 4"
 			);
 
 			CommandDropletFixCfg = Config.Bind(
@@ -275,6 +285,7 @@ namespace TPDespair.ZetTweaks
 				if (MultitudeMoneyCfg.Value) GoldFromKillHook();
 
 				MoonBatteryMissionController.onInstanceChangedGlobal += ChangeRequiredBatteries;
+				On.RoR2.VoidStageMissionController.Start += ChangeRequiredDeepVoidCells;
 
 				if (DroneTC280AnywhereCfg.Value || DroneEquipmentAnywhereCfg.Value) SceneDirector.onGenerateInteractableCardSelection += AddMissingDroneSpawnCards;
 			}
@@ -294,6 +305,11 @@ namespace TPDespair.ZetTweaks
 				if (BazaarPreventKickoutCfg.Value && !Compat.DisableBazaarPreventKickout) BazaarPreventKickoutHook();
 
 				if (MoneyStageLimitCfg.Value > 0 && !Compat.DisableStarterMoney) SceneDirector.onPostPopulateSceneServer += GiveMoney;
+
+				if (BloodShrineScaleCfg.Value > 0f && !Compat.DisableBloodShrineScale)
+				{
+					ModifyBloodShrineReward();
+				}
 
 				if (BossDropTweakCfg.Value && !Compat.DisableBossDropTweak) BossDropHook();
 				if (UnlockInteractablesCfg.Value || Compat.UnlockInteractables) UnlockInteractablesHook();
@@ -321,8 +337,8 @@ namespace TPDespair.ZetTweaks
 				{
 					if (DroneFriendlyFireFixCfg.Value)
 					{
-						Debug.LogWarning("ZetTweaks - Modifying Drone SkillDrivers");
-						ModifyDroneTargeting();
+						Debug.LogWarning("ZetTweaks - Modifying Drone AI");
+						ModifyDroneAI();
 					}
 
 					HandleDroneDeathHook();
@@ -584,6 +600,38 @@ namespace TPDespair.ZetTweaks
 			};
 		}
 
+		private static void ModifyBloodShrineReward()
+		{
+			IL.RoR2.ShrineBloodBehavior.AddShrineStack += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				bool found = c.TryGotoNext(
+					x => x.MatchStloc(1)
+				);
+
+				if (found)
+				{
+					c.Emit(OpCodes.Ldarg, 0);
+					c.EmitDelegate<Func<uint, ShrineBloodBehavior, uint>>((money, shrine) =>
+					{
+						if (Run.instance)
+						{
+							uint minReward = (uint)(Run.instance.GetDifficultyScaledCost(25) * (shrine.purchaseInteraction.cost / 100f) * BloodShrineScaleCfg.Value);
+
+							if (minReward > money) return minReward;
+						}
+
+						return money;
+					});
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks [GameplayModule] - ModifyBloodShrineReward Failed!");
+				}
+			};
+		}
+
 		private static void BossDropHook()
 		{
 			IL.RoR2.BossGroup.DropRewards += (il) =>
@@ -643,6 +691,16 @@ namespace TPDespair.ZetTweaks
 			}
 		}
 
+		private static void ChangeRequiredDeepVoidCells(On.RoR2.VoidStageMissionController.orig_Start orig, VoidStageMissionController self)
+		{
+			if (self && NetworkServer.active)
+			{
+				self.batteryCount = Mathf.Clamp(VoidBossHoldoutZonesCfg.Value, 1, 4);
+			}
+
+			orig(self);
+		}
+
 		private static float VoidCellExitRadius = 15f;
 
 		private static void VoidCellHook()
@@ -692,12 +750,12 @@ namespace TPDespair.ZetTweaks
 
 
 
-            IL.EntityStates.Missions.Arena.NullWard.Complete.OnEnter += ReplaceWardRadius;
+			IL.EntityStates.Missions.Arena.NullWard.Complete.OnEnter += ReplaceWardRadius;
 			IL.EntityStates.Missions.Arena.NullWard.Complete.FixedUpdate += ReplaceWardRadius;
 		}
 
-        private static void ReplaceWardRadius(ILContext il)
-        {
+		private static void ReplaceWardRadius(ILContext il)
+		{
 			ILCursor c = new ILCursor(il);
 
 			bool found = c.TryGotoNext(
@@ -716,7 +774,7 @@ namespace TPDespair.ZetTweaks
 			}
 		}
 
-        private static void HoldoutZoneHook()
+		private static void HoldoutZoneHook()
 		{
 			On.RoR2.HoldoutZoneController.Awake += (orig, self) =>
 			{
@@ -804,7 +862,7 @@ namespace TPDespair.ZetTweaks
 			//Debug.LogWarning("HoldoutZone New - Radius : " + self.baseRadius + "   Duration : " + self.baseChargeDuration);
 		}
 
-        private static void CommandDropletFix()
+		private static void CommandDropletFix()
 		{
 			IL.RoR2.Artifacts.CommandArtifactManager.OnDropletHitGroundServer += (il) =>
 			{
@@ -885,7 +943,8 @@ namespace TPDespair.ZetTweaks
 			};
 		}
 
-		private static bool ColliderPickup(Collider collider) {
+		private static bool ColliderPickup(Collider collider)
+		{
 			if (collider.GetComponent<PickupDropletController>()) return true;
 			if (collider.GetComponent<GenericPickupController>()) return true;
 			if (collider.GetComponent<PickupPickerController>()) return true;
@@ -1015,33 +1074,39 @@ namespace TPDespair.ZetTweaks
 			}
 		}
 
-		private static void ModifyDroneTargeting()
+		private static void ModifyDroneAI()
 		{
-			AimAtEnemy(Turret1Master);
-			AimAtEnemy(EngiTurretMaster);
-			AimAtEnemy(EngiWalkerTurretMaster);
-			AimAtEnemy(EngiBeamTurretMaster);
-			AimAtEnemy(Drone1Master);
-			AimAtEnemy(MegaDroneMaster);
-			AimAtEnemy(MissileDroneMaster);
-			AimAtEnemy(BackupDroneMaster);
-			AimAtEnemy(FlameDroneMaster);
-			AimAtEnemy(EquipmentDroneMaster);
-			AimAtEnemy(BeetleGuardAllyMaster);
-			AimAtEnemy(RoboBallGreenBuddyMaster);
-			AimAtEnemy(RoboBallRedBuddyMaster);
+			ModifyAI(Turret1Master);
+			ModifyAI(EngiTurretMaster);
+			ModifyAI(EngiWalkerTurretMaster);
+			ModifyAI(EngiBeamTurretMaster);
+			ModifyAI(Drone1Master);
+			ModifyAI(MegaDroneMaster);
+			ModifyAI(MissileDroneMaster);
+			ModifyAI(BackupDroneMaster);
+			ModifyAI(FlameDroneMaster);
+			ModifyAI(EquipmentDroneMaster);
+			ModifyAI(BeetleGuardAllyMaster);
+			ModifyAI(RoboBallGreenBuddyMaster);
+			ModifyAI(RoboBallRedBuddyMaster);
 		}
 
-		public static void AimAtEnemy(GameObject masterObject)
+		public static void ModifyAI(GameObject masterObject)
 		{
 			AimAtEnemy(masterObject.GetComponents<AISkillDriver>());
+			DontRetaliate(masterObject.GetComponents<BaseAI>());
 		}
 
 		public static void AimAtEnemy(AISkillDriver[] skillDrivers)
 		{
 			foreach (var skillDriver in skillDrivers) skillDriver.aimType = AISkillDriver.AimType.AtCurrentEnemy;
 		}
-		
+
+		public static void DontRetaliate(BaseAI[] baseAIs)
+		{
+			foreach (var baseAI in baseAIs) baseAI.neverRetaliateFriendlies = true;
+		}
+		/*
 		private static void DroneDecay()
 		{
 			On.RoR2.CharacterMaster.OnBodyStart += (orig, master, body) =>
@@ -1061,7 +1126,7 @@ namespace TPDespair.ZetTweaks
 				orig(master, body);
 			};
 		}
-		
+		*/
 		private static void HandleDroneDeathHook()
 		{
 			IL.RoR2.CharacterMaster.OnBodyDeath += (il) =>
