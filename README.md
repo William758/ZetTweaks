@@ -18,6 +18,8 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Start the first 5 stages with enough money to open a chest.
 
+- BloodShrines give a minimum of 2 chests worth of money per 100% health taken.
+
 - CombatDirector gains 10% more credits for first 5 stages.
 
 - Decaying boost to money earned from kills while Multitudes is enabled.
@@ -34,10 +36,13 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 |--|--|--|
 | Teleporter  | 60m -> 90m | 90s |
 | Void Cell| 15m -> 20m | 60s -> 45s |
+| DeepVoid Signal| 20m -> 30m | 60s -> 45s |
 | Pillar of Mass| 20m -> 30m | 60s -> 45s |
 | Rescue Ship | 40m -> 60m | 60s -> 45s |
 
 - Pillars required to fight Mithrix changed from 4 to 3.
+
+- VoidSignals required to fight Voidling changed from 4 to 3.
 
 - Items and equipment don't drop in command essence if there is only one choice.
 
@@ -61,7 +66,9 @@ Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
 
-v1.1.2 - Check for PickupPickupController on out of bounds items. Add ShareSuite support for startingMoney. Fix VoidCell Holdout Radius and made finished VoidCell scale bubble based on actual radius.
+v1.1.3 - Fixed some drones still retaliating against allies. BloodShrines now provide a minimum reward that scales with difficulty. VoidSignals required reduced to 3.
+
+v1.1.2 - Check for PickupPickerController on out of bounds items. Add ShareSuite support for startingMoney. Fix VoidCell Holdout Radius and made finished VoidCell scale bubble based on actual radius.
 
 v1.1.1 - Removed debug drone health decay.
 
