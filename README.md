@@ -6,6 +6,8 @@ Some changes will be disabled if another mod already does that change.
 
 Fix console error spam from TeleShow and NoLockedInteractables.
 
+- Change lunar equipment droplet color.
+
 - Prevent Focus Crystal and Crowbar from increasing self-damage.
 
 - Only place PrimordialTeleporter on last stage of a loop.
@@ -46,6 +48,8 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Items and equipment don't drop in command essence if there is only one choice.
 
+- Remove unobtainable items from the command menu.
+
 - Pickups that go out of bounds are teleported back onto the stage.
 
 - Increase Huntress targeting range by 2m every level and prioritize enemies near the crosshair.
@@ -54,9 +58,13 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - EquipmentDrones have a 25% chance to drop equipment after they are destroyed.
 
-- TC280 and GunnerTurret can be repurchased after they are destroyed. ()
+- TC280 and GunnerTurret can be repurchased after they are destroyed.
 
 - TC280 and EquipmentDrone can appear on any stage where regular drones spawn.
+
+- Failing a ChanceShrines reduces fail chance and improves item rarity. Resets when rewarded.
+
+- Configurable ChanceShrine reward count, cost scaling, reward scaling, and time between each use.
 
 ## Installation:
 
@@ -65,6 +73,10 @@ Requires Bepinex and HookGenPatcher.
 Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
+
+v1.1.5 - Change lunar equipment droplet color. Remove unobtainable items in the command menu. ChanceShrines improve with failures and are configurable.
+
+v1.1.4 - Prevent MultitudeGoldBoost from granting less then the base gold reward.
 
 v1.1.3 - Fixed some drones still retaliating against allies. BloodShrines now provide a minimum reward that scales with difficulty. VoidSignals required reduced to 3.
 

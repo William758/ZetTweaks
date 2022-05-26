@@ -1,10 +1,11 @@
-using BepInEx.Configuration;
+﻿using BepInEx.Configuration;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using RoR2;
 using RoR2.CharacterAI;
 using RoR2.Navigation;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -21,6 +22,7 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<bool> BazaarPreventKickoutCfg { get; set; }
 		public static ConfigEntry<float> VoidHealthRecoveryCfg { get; set; }
 		public static ConfigEntry<float> VoidShieldRecoveryCfg { get; set; }
+		public static ConfigEntry<int> RecolorLunarEquipmentCfg { get; set; }
 		public static ConfigEntry<float> MoneyChestGivenCfg { get; set; }
 		public static ConfigEntry<int> MoneyStageLimitCfg { get; set; }
 		public static ConfigEntry<float> BloodShrineScaleCfg { get; set; }
@@ -44,6 +46,7 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<int> MoonHoldoutZonesCfg { get; set; }
 		public static ConfigEntry<int> VoidBossHoldoutZonesCfg { get; set; }
 		public static ConfigEntry<bool> CommandDropletFixCfg { get; set; }
+		public static ConfigEntry<bool> CleanPickerOptionsCfg { get; set; }
 		public static ConfigEntry<bool> TeleportLostDropletCfg { get; set; }
 		public static ConfigEntry<bool> ModifyHuntressAimCfg { get; set; }
 		public static ConfigEntry<bool> TargetSortAngleCfg { get; set; }
@@ -55,6 +58,25 @@ namespace TPDespair.ZetTweaks
 		public static ConfigEntry<bool> DroneEquipmentAnywhereCfg { get; set; }
 		public static ConfigEntry<bool> DroneTC280RepurchasableCfg { get; set; }
 		public static ConfigEntry<bool> DroneTurretRepurchasableCfg { get; set; }
+		public static ConfigEntry<bool> ModifyChanceShrineCfg { get; set; }
+		public static ConfigEntry<int> ChanceShrineCountCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineTimerCfg { get; set; }
+		public static ConfigEntry<int> ChanceShrineCostCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineCostMultCfg { get; set; }
+		public static ConfigEntry<int> ChanceShrineMaxFailCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineFailureCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineFailureMultCfg { get; set; }
+		public static ConfigEntry<bool> ChanceShrineHackedLockCfg { get; set; }
+		public static ConfigEntry<bool> ChanceShrineBypassDropTableCfg { get; set; }
+		public static ConfigEntry<bool> ChanceShrineLunarConversionCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineEquipmentCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineEquipmentMultCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineCommonCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineCommonMultCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineUncommonCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineUncommonMultCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineLegendaryCfg { get; set; }
+		public static ConfigEntry<float> ChanceShrineLegendaryMultCfg { get; set; }
 
 
 
@@ -94,6 +116,8 @@ namespace TPDespair.ZetTweaks
 		internal static SpawnCard MegaDroneSpawnCard { get => _megaDroneSpawnCard.Value; }
 		internal static SpawnCard EquipDroneSpawnCard { get => _equipDroneSpawnCard.Value; }
 
+		internal static GameObject LunarEquipmentDropletPrefab;
+
 
 
 		internal static void SetupConfig()
@@ -131,6 +155,11 @@ namespace TPDespair.ZetTweaks
 				"Recover shield fraction when a voidcell is activated. 0 to disable."
 			);
 
+			RecolorLunarEquipmentCfg = Config.Bind(
+				"2b-Gameplay - Tweak", "recolorLunarEquipment", 1,
+				"Change the color of lunar equipment droplets. 0 = Disabled, 1 = AutoCompat, 2 = Force Enabled"
+			);
+
 			MoneyChestGivenCfg = Config.Bind(
 				"2c-Gameplay - Economy", "startingMoney", 1.25f,
 				"Money given at stage start (measured in chests)."
@@ -141,7 +170,7 @@ namespace TPDespair.ZetTweaks
 			);
 			BloodShrineScaleCfg = Config.Bind(
 				"2c-Gameplay - Economy", "bloodShrineScale", 2f,
-				"Minimum money given (measured in chests) when bloodshrine takes 100% health. 0 to disable."
+				"Minimum money given (measured in chests) when blood shrine takes 100% health. 0 to disable."
 			);
 			DirectorMoneyCfg = Config.Bind(
 				"2c-Gameplay - Economy", "directorMoney", 1.1f,
@@ -226,6 +255,10 @@ namespace TPDespair.ZetTweaks
 				"2f-Gameplay - Droplet", "commandDropletFix", true,
 				"No command droplet for items that don't give choices."
 			);
+			CleanPickerOptionsCfg = Config.Bind(
+				"2f-Gameplay - Droplet", "cleanPickerOptions", true,
+				"Remove disabled-unobtainable items from command options."
+			);
 			TeleportLostDropletCfg = Config.Bind(
 				"2f-Gameplay - Droplet", "teleportLostDroplet", true,
 				"Teleport pickup droplets that go out of bounds."
@@ -272,6 +305,83 @@ namespace TPDespair.ZetTweaks
 				"2H-Gameplay - Drone", "droneEquipmentAnywhere", true,
 				"Allow Equipment Drones to spawn anywhere regular drones spawn."
 			);
+
+			ModifyChanceShrineCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "modifyChanceShrine", true,
+				"Modify chance shrine behavior."
+			);
+			ChanceShrineCountCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineCount", 2,
+				"Maximum successful purchases from a chance shrine."
+			);
+			ChanceShrineTimerCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineTimer", 1f,
+				"Time between chance shrine uses. Vanilla is 2"
+			);
+			ChanceShrineCostCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineCost", 17,
+				"Base cost of chance shrine. Vanilla is 17"
+			);
+			ChanceShrineCostMultCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineCostMult", 1.4f,
+				"Cost multiplier every time chance shrine is used. Vanilla is 1.4"
+			);
+			ChanceShrineMaxFailCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineMaxFail", 5,
+				"Consecutive failure effects dont scale past this amount."
+			);
+			ChanceShrineFailureCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineFailure", 0.45f,
+				"Base fail chance of chance shrine. Vanilla is 0.45 = 45%"
+			);
+			ChanceShrineFailureMultCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineFailureMult", 0.9f,
+				"Fail chance multiplier for each consecutive chance shrine failure."
+			);
+			ChanceShrineHackedLockCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineHackedLock", true,
+				"Lock consecutive failure count if price is zero."
+			);
+			ChanceShrineBypassDropTableCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineBypassDropTable", true,
+				"Use custom item tier weights to roll items instead of the default drop table."
+			);
+			ChanceShrineLunarConversionCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineLunarConversion", true,
+				"Allow Eulogy Zero to convert rewards to lunar when using custom weights."
+			);
+			ChanceShrineEquipmentCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineEquipment", 9f,
+				"Base equipment drop weight from shrine reward. vanilla is 9"
+			);
+			ChanceShrineEquipmentMultCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineEquipmentMult", 0.75f,
+				"Equipment drop weight multiplier for each consecutive chance shrine failure."
+			);
+			ChanceShrineCommonCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineCommon", 36f,
+				"Base common drop weight from shrine reward. vanilla is 36"
+			);
+			ChanceShrineCommonMultCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineCommonMult", 0.75f,
+				"Common drop weight multiplier for each consecutive chance shrine failure."
+			);
+			ChanceShrineUncommonCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineUncommon", 9f,
+				"Base uncommon drop weight from shrine reward. vanilla is 9"
+			);
+			ChanceShrineUncommonMultCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineUncommonMult", 1.5f,
+				"Uncommon drop weight multiplier for each consecutive chance shrine failure."
+			);
+			ChanceShrineLegendaryCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineLegendary", 1f,
+				"Base legendary drop weight from shrine reward. vanilla is 1"
+			);
+			ChanceShrineLegendaryMultCfg = Config.Bind(
+				"2i-Gameplay - Shrine", "chanceShrineLegendaryMult", 2f,
+				"Legendary drop weight multiplier for each consecutive chance shrine failure."
+			);
 		}
 
 		internal static void Init()
@@ -304,6 +414,11 @@ namespace TPDespair.ZetTweaks
 				if (BazaarGestureCfg.Value && !Compat.DisableBazaarGesture) BazaarGestureHook();
 				if (BazaarPreventKickoutCfg.Value && !Compat.DisableBazaarPreventKickout) BazaarPreventKickoutHook();
 
+				if (RecolorLunarEquipmentCfg.Value == 2 || (RecolorLunarEquipmentCfg.Value == 1 && !Compat.WolfoQol))
+				{
+					RecolorLunarEquipment();
+				}
+
 				if (MoneyStageLimitCfg.Value > 0 && !Compat.DisableStarterMoney) SceneDirector.onPostPopulateSceneServer += GiveMoney;
 
 				if (BloodShrineScaleCfg.Value > 0f && !Compat.DisableBloodShrineScale)
@@ -311,7 +426,7 @@ namespace TPDespair.ZetTweaks
 					ModifyBloodShrineReward();
 				}
 
-				if (BossDropTweakCfg.Value && !Compat.DisableBossDropTweak) BossDropHook();
+				if (BossDropTweakCfg.Value && !Compat.DisableBossDropTweak) BossRewardChanceHook();
 				if (UnlockInteractablesCfg.Value || Compat.UnlockInteractables) UnlockInteractablesHook();
 
 				if (ModifyHoldoutValueCfg.Value || EclipseHoldoutLimitCfg.Value)
@@ -321,6 +436,7 @@ namespace TPDespair.ZetTweaks
 				}
 
 				if (CommandDropletFixCfg.Value && !Compat.DisableCommandDropletFix) CommandDropletFix();
+				if (CleanPickerOptionsCfg.Value) CleanPickerOptionsHook();
 				if (TeleportLostDropletCfg.Value && !Compat.DisableTeleportLostDroplet)
 				{
 					PickupBackgroundCollision();
@@ -342,6 +458,16 @@ namespace TPDespair.ZetTweaks
 					}
 
 					HandleDroneDeathHook();
+				}
+
+				if (!Compat.DisableChanceShrine)
+				{
+					if (ModifyChanceShrineCfg.Value)
+					{
+						ChanceShrineAwakeHook();
+						ChanceShrineTimerHook();
+						ChanceShrineDropHook();
+					}
 				}
 
 				//DroneDecay();
@@ -380,7 +506,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - SelfCrowbarHook Failed!");
+					Debug.LogWarning("ZetTweaks - SelfCrowbarHook Failed!");
 				}
 			};
 		}
@@ -415,7 +541,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - SelfFocusHook Failed!");
+					Debug.LogWarning("ZetTweaks - SelfFocusHook Failed!");
 				}
 			};
 		}
@@ -432,7 +558,7 @@ namespace TPDespair.ZetTweaks
 					SpawnCard spawnCard = LegacyResourcesAPI.Load<InteractableSpawnCard>("spawncards/interactablespawncard/" + cardName);
 
 					if (spawnCard) self.teleporterSpawnCard = spawnCard;
-					else Debug.LogWarning("ZetTweaks [GameplayModule] - interactablespawncard/" + cardName + " could not be found!");
+					else Debug.LogWarning("ZetTweaks - interactablespawncard/" + cardName + " could not be found!");
 				}
 
 				orig(self);
@@ -463,7 +589,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - BazaarGestureHook Failed!");
+					Debug.LogWarning("ZetTweaks - BazaarGestureHook Failed!");
 				}
 			};
 		}
@@ -502,6 +628,43 @@ namespace TPDespair.ZetTweaks
 					}
 				}
 			};
+		}
+
+		private static void RecolorLunarEquipment()
+		{
+			CreateLunarEquipmentPrefab();
+
+			foreach (EquipmentIndex equipIndex in EquipmentCatalog.equipmentList)
+			{
+				EquipmentDef equipDef = EquipmentCatalog.GetEquipmentDef(equipIndex);
+				if (equipDef && equipDef.isLunar)
+				{
+					if (!(Compat.ZetAspects && equipDef == RoR2Content.Equipment.AffixLunar))
+					{
+						ColorEquipmentDroplet(equipDef);
+					}
+				}
+			}
+		}
+
+		private static void CreateLunarEquipmentPrefab()
+		{
+			LunarEquipmentDropletPrefab = ZetTweaksPlugin.ClonePrefab(LegacyResourcesAPI.Load<GameObject>("Prefabs/itempickups/LunarOrb"), "ZT_LunarEquipmentOrb");
+
+			TrailRenderer trail = LunarEquipmentDropletPrefab.transform.GetComponentInChildren<TrailRenderer>();
+			trail.startColor = new Color(0.3f, 0.45f, 0.9f, 0f);
+			trail.endColor = new Color(0.2f, 0.3f, 0.9f);
+		}
+
+		private static void ColorEquipmentDroplet(EquipmentDef equipDef)
+		{
+			if (equipDef)
+			{
+				PickupDef pickupDef = PickupCatalog.GetPickupDef(PickupCatalog.FindPickupIndex(equipDef.equipmentIndex));
+				if (LunarEquipmentDropletPrefab) pickupDef.dropletDisplayPrefab = LunarEquipmentDropletPrefab;
+				pickupDef.baseColor = new Color(0.45f, 0.6f, 0.9f);
+				pickupDef.darkColor = new Color(0.45f, 0.6f, 0.9f);
+			}
 		}
 
 		private static void GiveMoney(SceneDirector director)
@@ -550,7 +713,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - DirectorMoneyHook Failed!");
+					Debug.LogWarning("ZetTweaks - DirectorMoneyHook Failed!");
 				}
 			};
 		}
@@ -580,13 +743,18 @@ namespace TPDespair.ZetTweaks
 						if (playerCount != realPlayerCount)
 						{
 							int multiplier = playerCount / realPlayerCount;
-							float mult = multiplier - 1f;
+							float mult = Mathf.Max(1f, multiplier - 1f);
 							int maxStages = multiplier + 2;
 							int stageClearCount = Run.instance.stageClearCount;
 							float factor = 0.5f + (0.5f / mult) * Math.Min(mult, realPlayerCount - 1);
 							factor *= Math.Max(0, maxStages - stageClearCount) / (float)maxStages;
 
-							return (uint)(reward * (mult * factor + 1));
+							uint newReward = (uint)(reward * (mult * factor + 1));
+
+							if (newReward > reward)
+							{
+								return newReward;
+							}
 						}
 
 						return reward;
@@ -595,7 +763,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - GoldFromKillHook Failed!");
+					Debug.LogWarning("ZetTweaks - GoldFromKillHook Failed!");
 				}
 			};
 		}
@@ -627,12 +795,12 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - ModifyBloodShrineReward Failed!");
+					Debug.LogWarning("ZetTweaks - ModifyBloodShrineReward Failed!");
 				}
 			};
 		}
 
-		private static void BossDropHook()
+		private static void BossRewardChanceHook()
 		{
 			IL.RoR2.BossGroup.DropRewards += (il) =>
 			{
@@ -671,7 +839,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - BossDropHook Failed!");
+					Debug.LogWarning("ZetTweaks - BossRewardChanceHook Failed!");
 				}
 			};
 		}
@@ -896,9 +1064,48 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - CommandDropletFix Failed!");
+					Debug.LogWarning("ZetTweaks - CommandDropletFix Failed!");
 				}
 			};
+		}
+
+		private static void CleanPickerOptionsHook()
+		{
+			On.RoR2.PickupPickerController.GetOptionsFromPickupIndex += (orig, pickupIndex) =>
+			{
+				PickupPickerController.Option[] options = orig(pickupIndex);
+
+				return CleanupOptions(options);
+			};
+		}
+
+		private static PickupPickerController.Option[] CleanupOptions(PickupPickerController.Option[] options)
+		{
+			List<PickupPickerController.Option> optionList = new List<PickupPickerController.Option>();
+
+			for (int i = 0; i < options.Length; i++)
+			{
+				bool valid = true;
+				PickupPickerController.Option option = options[i];
+
+				PickupDef pickupDef = PickupCatalog.GetPickupDef(option.pickupIndex);
+				if (pickupDef.itemIndex != ItemIndex.None)
+				{
+					ItemDef itemDef = ItemCatalog.GetItemDef(pickupDef.itemIndex);
+
+					if (itemDef.tier == ItemTier.NoTier && itemDef.ContainsTag(ItemTag.WorldUnique)) valid = false;
+				}
+				else if (pickupDef.equipmentIndex != EquipmentIndex.None)
+				{
+					EquipmentDef equipDef = EquipmentCatalog.GetEquipmentDef(pickupDef.equipmentIndex);
+
+					if (equipDef.canDrop == false && equipDef.appearsInSinglePlayer == false && equipDef.appearsInMultiPlayer == false) valid = false;
+				}
+
+				if (valid) optionList.Add(option);
+			}
+
+			return optionList.ToArray();
 		}
 
 		private static void PickupBackgroundCollision()
@@ -972,7 +1179,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - HuntressTargetFix Failed!");
+					Debug.LogWarning("ZetTweaks - HuntressTargetFix Failed!");
 				}
 			};
 		}
@@ -1000,7 +1207,7 @@ namespace TPDespair.ZetTweaks
 				}
 				else
 				{
-					Debug.LogWarning("ZetTweaks [GameplayModule] - HuntressRangeBuff Failed!");
+					Debug.LogWarning("ZetTweaks - HuntressRangeBuff Failed!");
 				}
 			};
 		}
@@ -1208,5 +1415,253 @@ namespace TPDespair.ZetTweaks
 				if (body.transform) gameObject.transform.rotation = body.transform.rotation;
 			}
 		}
+
+
+
+		private static void ChanceShrineAwakeHook()
+		{
+			On.RoR2.ShrineChanceBehavior.Awake += (orig, self) =>
+			{
+				self.maxPurchaseCount = ChanceShrineCountCfg.Value;
+				self.costMultiplierPerPurchase = ChanceShrineCostMultCfg.Value;
+				self.refreshTimer = ChanceShrineTimerCfg.Value;
+
+				orig(self);
+
+				PurchaseInteraction interaction = self.purchaseInteraction;
+				if (interaction)
+				{
+					interaction.cost = ChanceShrineCostCfg.Value;
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks - ChanceShrineAwakeHook : Could not set base cost!");
+				}
+			};
+		}
+
+		private static void ChanceShrineTimerHook()
+		{
+			IL.RoR2.ShrineChanceBehavior.AddShrineStack += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				bool found = c.TryGotoNext(
+					x => x.MatchStfld<ShrineChanceBehavior>("refreshTimer")
+				);
+
+				if (found)
+				{
+					c.Emit(OpCodes.Pop);
+					c.EmitDelegate<Func<float>>(() =>
+					{
+						return ChanceShrineTimerCfg.Value;
+					});
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks - ChanceShrineTimerHook Failed!");
+				}
+			};
+		}
+
+		private static void ChanceShrineDropHook()
+		{
+			IL.RoR2.ShrineChanceBehavior.AddShrineStack += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				bool found = c.TryGotoNext(
+					x => x.MatchLdloc(0),
+					x => x.MatchLdsfld<PickupIndex>("none"),
+					x => x.MatchCall(out _),
+					x => x.MatchStloc(1)
+				);
+
+				if (found)
+				{
+					c.Index += 4;
+
+					ILLabel bypassDropGen = c.MarkLabel();
+
+					c.Emit(OpCodes.Ldarg, 0);
+					c.EmitDelegate<Func<ShrineChanceBehavior, PickupIndex>>((self) =>
+					{
+						return GenerateDrop(self);
+					});
+					c.Emit(OpCodes.Stloc, 0);
+
+					c.Emit(OpCodes.Ldloc, 0);
+					c.EmitDelegate<Func<PickupIndex, bool>>((pickupIndex) =>
+					{
+						return pickupIndex == PickupIndex.none;
+					});
+					c.Emit(OpCodes.Stloc, 1);
+
+					c.Index = 0;
+
+					found = c.TryGotoNext(
+						x => x.MatchLdsfld<PickupIndex>("none"),
+						x => x.MatchStloc(0)
+					);
+					
+					if (found)
+					{
+						if (bypassDropGen != null)
+						{
+							c.Index += 2;
+
+							c.Emit(OpCodes.Br, bypassDropGen.Target);
+						}
+						else
+						{
+							Debug.LogWarning("ZetTweaks - ChanceShrineDropHook:Illabel is null!");
+						}
+					}
+					else
+					{
+						Debug.LogWarning("ZetTweaks - ChanceShrineDropHook:Bypass Failed!");
+					}
+					
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks - ChanceShrineDropHook:BypassSetup Failed!");
+				}
+			};
+		}
+
+		private static PickupIndex GenerateDrop(ShrineChanceBehavior self)
+		{
+			PickupIndex pickupIndex = PickupIndex.none;
+
+			ChanceShrineTracker tracker = self.GetComponent<ChanceShrineTracker>();
+			if (!tracker)
+			{
+				tracker = self.gameObject.AddComponent<ChanceShrineTracker>();
+			}
+
+			bool lockFailCount = ChanceShrineHackedLockCfg.Value && self.purchaseInteraction.Networkcost == 0;
+
+			int failCount = tracker ? tracker.consecutiveFailure : 0;
+			failCount = Mathf.Max(0, Mathf.Min(failCount, ChanceShrineMaxFailCfg.Value));
+			float failChance = Mathf.Min(0.9f, ChanceShrineFailureCfg.Value * Mathf.Pow(ChanceShrineFailureMultCfg.Value, failCount));
+			if (self.rng.nextNormalizedFloat < failChance)
+			{
+				if (tracker && !lockFailCount)
+				{
+					tracker.consecutiveFailure++;
+					//Debug.LogWarning("ZetTweaks [ChanceShrineTracker] - ConFail : " + tracker.consecutiveFailure + " FailChance : " + failChance);
+				}
+
+				self.shrineColor = new Color(0.35f, 0.35f, 0.35f);
+
+				return pickupIndex;
+			}
+
+			if (!ChanceShrineBypassDropTableCfg.Value && self.dropTable)
+			{
+				pickupIndex = self.dropTable.GenerateDrop(self.rng);
+			}
+			else
+			{
+				float equipmentWeight = ChanceShrineEquipmentCfg.Value * Mathf.Pow(ChanceShrineEquipmentMultCfg.Value, failCount);
+				float commonWeight = ChanceShrineCommonCfg.Value * Mathf.Pow(ChanceShrineCommonMultCfg.Value, failCount);
+				float uncommonWeight = ChanceShrineUncommonCfg.Value * Mathf.Pow(ChanceShrineUncommonMultCfg.Value, failCount);
+				float legendaryWeight = ChanceShrineLegendaryCfg.Value * Mathf.Pow(ChanceShrineLegendaryMultCfg.Value, failCount);
+
+				PickupIndex equipment = self.rng.NextElementUniform(Run.instance.availableEquipmentDropList);
+				PickupIndex common = self.rng.NextElementUniform(Run.instance.availableTier1DropList);
+				PickupIndex uncommon = self.rng.NextElementUniform(Run.instance.availableTier2DropList);
+				PickupIndex legendary = self.rng.NextElementUniform(Run.instance.availableTier3DropList);
+
+				WeightedSelection<PickupIndex> weightedSelection = new WeightedSelection<PickupIndex>();
+				weightedSelection.AddChoice(equipment, equipmentWeight);
+				weightedSelection.AddChoice(common, commonWeight);
+				weightedSelection.AddChoice(uncommon, uncommonWeight);
+				weightedSelection.AddChoice(legendary, legendaryWeight);
+				/*
+				ConvertToChance(ref equipmentWeight, ref commonWeight, ref uncommonWeight, ref legendaryWeight);
+				Debug.LogWarning("ZetTweaks [ChanceShrine] - Chance : " + $"Equip : {equipmentWeight:0.#}% , " + $"T1 : {commonWeight:0.#}% , " + $"T2 : {uncommonWeight:0.#}% , " + $"T3 : {legendaryWeight:0.#}%");
+				*/
+				pickupIndex = weightedSelection.Evaluate(self.rng.nextNormalizedFloat);
+
+				if (ChanceShrineLunarConversionCfg.Value)
+				{
+					pickupIndex = RoR2.Items.RandomlyLunarUtils.CheckForLunarReplacement(pickupIndex, self.rng);
+				}
+			}
+
+			Color color = new Color(0.35f, 0.35f, 0.35f);
+
+			if (pickupIndex != PickupIndex.none)
+			{
+				if (tracker && !lockFailCount)
+				{
+					tracker.consecutiveFailure = 0;
+					//Debug.LogWarning("ZetTweaks [ChanceShrineTracker] - ConFail : 0");
+				}
+
+				PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupIndex);
+				if (pickupDef != null)
+				{
+					if (pickupDef.equipmentIndex != EquipmentIndex.None)
+					{
+						if (pickupDef.isLunar)
+						{
+							color = new Color(0f, 0.5f, 1f);
+						}
+						else
+						{
+							color = new Color(1f, 0.5f, 0f);
+						}
+					}
+					else
+					{
+						ItemTier itemTier = pickupDef.itemTier;
+						switch (itemTier)
+						{
+							case ItemTier.Tier1:
+								color = Color.white;
+								break;
+							case ItemTier.Tier2:
+								color = Color.green;
+								break;
+							case ItemTier.Tier3:
+								color = Color.red;
+								break;
+							case ItemTier.Lunar:
+								color = new Color(0f, 0.5f, 1f);
+								break;
+							default:
+								color = new Color(0.35f, 0.35f, 0.35f);
+								break;
+						}
+					}
+				}
+			}
+
+			self.shrineColor = color;
+
+			return pickupIndex;
+		}
+		/*
+		private static void ConvertToChance(ref float num1, ref float num2, ref float num3, ref float num4)
+		{
+			float divisor = (num1 + num2 + num3 + num4) * 0.01f;
+
+			num1 /= divisor;
+			num2 /= divisor;
+			num3 /= divisor;
+			num4 /= divisor;
+		}
+		*/
+	}
+
+
+
+	public class ChanceShrineTracker : MonoBehaviour
+	{
+		public int consecutiveFailure = 0;
 	}
 }
