@@ -131,7 +131,7 @@ namespace TPDespair.ZetTweaks
 
 			FixSelfDamageCfg = Config.Bind(
 				"2b-Gameplay - Fixes", "fixSelfDamage", true,
-				"Prevent Focus Crystal and Crowbar from increasing self damage."
+				"Prevent Focus Crystal, Crowbar and DelicateWatch from increasing self damage."
 			);
 			FixMeanderTeleporterCfg = Config.Bind(
 				"2b-Gameplay - Fixes", "endloopTeleporter", true,
@@ -409,6 +409,7 @@ namespace TPDespair.ZetTweaks
 				{
 					SelfCrowbarHook();
 					SelfFocusHook();
+					SelfWatchHook();
 				}
 
 				if (BazaarGestureCfg.Value && !Compat.DisableBazaarGesture) BazaarGestureHook();
@@ -485,7 +486,7 @@ namespace TPDespair.ZetTweaks
 				ILLabel jumpTo = null;
 
 				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(21),
+					x => x.MatchLdloc(19),
 					x => x.MatchLdcI4(0),
 					x => x.MatchBle(out jumpTo)
 				);
@@ -520,7 +521,7 @@ namespace TPDespair.ZetTweaks
 				ILLabel jumpTo = null;
 
 				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(26),
+					x => x.MatchLdloc(24),
 					x => x.MatchLdcI4(0),
 					x => x.MatchBle(out jumpTo)
 				);
@@ -542,6 +543,41 @@ namespace TPDespair.ZetTweaks
 				else
 				{
 					Debug.LogWarning("ZetTweaks - SelfFocusHook Failed!");
+				}
+			};
+		}
+
+		private static void SelfWatchHook()
+		{
+			IL.RoR2.HealthComponent.TakeDamage += (il) =>
+			{
+				ILCursor c = new ILCursor(il);
+
+				ILLabel jumpTo = null;
+
+				bool found = c.TryGotoNext(
+					x => x.MatchLdloc(25),
+					x => x.MatchLdcI4(0),
+					x => x.MatchBle(out jumpTo)
+				);
+
+				if (found)
+				{
+					c.Index += 3;
+
+					c.Emit(OpCodes.Ldarg, 0);
+					c.Emit(OpCodes.Ldloc, 1);
+					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, atkBody) =>
+					{
+						if (healthComponent.body == atkBody) return true;
+
+						return false;
+					});
+					c.Emit(OpCodes.Brtrue, jumpTo);
+				}
+				else
+				{
+					Debug.LogWarning("ZetTweaks - SelfWatchHook Failed!");
 				}
 			};
 		}

@@ -8,7 +8,7 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Change lunar equipment droplet color.
 
-- Prevent Focus Crystal and Crowbar from increasing self-damage.
+- Prevent Focus Crystal, Crowbar and Delicate Watch from increasing self-damage.
 
 - Only place PrimordialTeleporter on last stage of a loop.
 
@@ -73,6 +73,8 @@ Requires Bepinex and HookGenPatcher.
 Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
+
+v1.1.6 - Fixed prevention of self damage increasing effects.
 
 v1.1.5 - Change lunar equipment droplet color. Remove unobtainable items in the command menu. ChanceShrines improve with failures and are configurable.
 
