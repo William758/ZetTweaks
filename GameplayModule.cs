@@ -10,6 +10,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 using EntityStates.Missions.Arena.NullWard;
+using System.Reflection;
 
 namespace TPDespair.ZetTweaks
 {
@@ -1068,18 +1069,21 @@ namespace TPDespair.ZetTweaks
 
 		private static void CommandDropletFix()
 		{
-			IL.RoR2.Artifacts.CommandArtifactManager.OnDropletHitGroundServer += (il) =>
+			IL.RoR2.PickupDropletController.CreatePickup += (il) =>
 			{
 				ILCursor c = new ILCursor(il);
 
+				MethodInfo methodInfo = typeof(PickupCatalog).GetMethod("GetPickupDef");
+
 				bool found = c.TryGotoNext(
-					x => x.MatchStloc(1),
-					x => x.MatchLdloc(1)
+					x => x.MatchCallOrCallvirt(methodInfo),
+					x => x.MatchStloc(out _),
+					x => x.MatchLdloc(out _)
 				);
 
 				if (found)
 				{
-					c.Index += 2;
+					c.Index += 3;
 
 					c.EmitDelegate<Func<PickupDef, PickupDef>>((pickupDef) =>
 					{
@@ -1105,7 +1109,7 @@ namespace TPDespair.ZetTweaks
 			};
 		}
 
-		private static void CleanPickerOptionsHook()
+        private static void CleanPickerOptionsHook()
 		{
 			On.RoR2.PickupPickerController.GetOptionsFromPickupIndex += (orig, pickupIndex) =>
 			{
@@ -1458,20 +1462,28 @@ namespace TPDespair.ZetTweaks
 		{
 			On.RoR2.ShrineChanceBehavior.Awake += (orig, self) =>
 			{
-				self.maxPurchaseCount = ChanceShrineCountCfg.Value;
-				self.costMultiplierPerPurchase = ChanceShrineCostMultCfg.Value;
-				self.refreshTimer = ChanceShrineTimerCfg.Value;
+				bool isRedShrine = self.maxPurchaseCount == 1 && self.failureChance >= 0.945f;
+
+				if (!isRedShrine)
+				{
+					self.maxPurchaseCount = ChanceShrineCountCfg.Value;
+					self.costMultiplierPerPurchase = ChanceShrineCostMultCfg.Value;
+					self.refreshTimer = ChanceShrineTimerCfg.Value;
+				}
 
 				orig(self);
 
-				PurchaseInteraction interaction = self.purchaseInteraction;
-				if (interaction)
+				if (!isRedShrine)
 				{
-					interaction.cost = ChanceShrineCostCfg.Value;
-				}
-				else
-				{
-					Debug.LogWarning("ZetTweaks - ChanceShrineAwakeHook : Could not set base cost!");
+					PurchaseInteraction interaction = self.purchaseInteraction;
+					if (interaction)
+					{
+						interaction.cost = ChanceShrineCostCfg.Value;
+					}
+					else
+					{
+						Debug.LogWarning("ZetTweaks - ChanceShrineAwakeHook : Could not set base cost!");
+					}
 				}
 			};
 		}
@@ -1569,33 +1581,44 @@ namespace TPDespair.ZetTweaks
 
 		private static PickupIndex GenerateDrop(ShrineChanceBehavior self)
 		{
-			PickupIndex pickupIndex = PickupIndex.none;
-
 			ChanceShrineTracker tracker = self.GetComponent<ChanceShrineTracker>();
 			if (!tracker)
 			{
 				tracker = self.gameObject.AddComponent<ChanceShrineTracker>();
 			}
 
+			bool isRedShrine = self.maxPurchaseCount == 1 && self.failureChance >= 0.945f;
 			bool lockFailCount = ChanceShrineHackedLockCfg.Value && self.purchaseInteraction.Networkcost == 0;
 
 			int failCount = tracker ? tracker.consecutiveFailure : 0;
 			failCount = Mathf.Max(0, Mathf.Min(failCount, ChanceShrineMaxFailCfg.Value));
-			float failChance = Mathf.Min(0.9f, ChanceShrineFailureCfg.Value * Mathf.Pow(ChanceShrineFailureMultCfg.Value, failCount));
-			if (self.rng.nextNormalizedFloat < failChance)
+
+			float successChance = Mathf.Max(1f - (ChanceShrineFailureCfg.Value * Mathf.Pow(ChanceShrineFailureMultCfg.Value, failCount)), 0.05f);
+			if (isRedShrine) successChance = 1f - self.failureChance;
+
+			if (self.rng.nextNormalizedFloat > successChance)
 			{
-				if (tracker && !lockFailCount)
+				// - Failure
+
+				if (!isRedShrine)
 				{
-					tracker.consecutiveFailure++;
-					//Debug.LogWarning("ZetTweaks [ChanceShrineTracker] - ConFail : " + tracker.consecutiveFailure + " FailChance : " + failChance);
+					if (tracker && !lockFailCount)
+					{
+						tracker.consecutiveFailure++;
+						//Debug.LogWarning("ZetTweaks [ChanceShrineTracker] - ConFail : " + tracker.consecutiveFailure + " FailChance : " + failChance);
+					}
+
+					self.shrineColor = new Color(0.35f, 0.35f, 0.35f);
 				}
 
-				self.shrineColor = new Color(0.35f, 0.35f, 0.35f);
-
-				return pickupIndex;
+				return PickupIndex.none;
 			}
 
-			if (!ChanceShrineBypassDropTableCfg.Value && self.dropTable)
+
+
+			PickupIndex pickupIndex = PickupIndex.none;
+
+			if ((!ChanceShrineBypassDropTableCfg.Value || isRedShrine) && self.dropTable)
 			{
 				pickupIndex = self.dropTable.GenerateDrop(self.rng);
 			}
@@ -1628,56 +1651,59 @@ namespace TPDespair.ZetTweaks
 				}
 			}
 
-			Color color = new Color(0.35f, 0.35f, 0.35f);
-
-			if (pickupIndex != PickupIndex.none)
+			if (!isRedShrine)
 			{
-				if (tracker && !lockFailCount)
-				{
-					tracker.consecutiveFailure = 0;
-					//Debug.LogWarning("ZetTweaks [ChanceShrineTracker] - ConFail : 0");
-				}
+				Color color = new Color(0.35f, 0.35f, 0.35f);
 
-				PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupIndex);
-				if (pickupDef != null)
+				if (pickupIndex != PickupIndex.none)
 				{
-					if (pickupDef.equipmentIndex != EquipmentIndex.None)
+					if (tracker && !lockFailCount)
 					{
-						if (pickupDef.isLunar)
+						tracker.consecutiveFailure = 0;
+						//Debug.LogWarning("ZetTweaks [ChanceShrineTracker] - ConFail : 0");
+					}
+
+					PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupIndex);
+					if (pickupDef != null)
+					{
+						if (pickupDef.equipmentIndex != EquipmentIndex.None)
 						{
-							color = new Color(0f, 0.5f, 1f);
+							if (pickupDef.isLunar)
+							{
+								color = new Color(0f, 0.5f, 1f);
+							}
+							else
+							{
+								color = new Color(1f, 0.5f, 0f);
+							}
 						}
 						else
 						{
-							color = new Color(1f, 0.5f, 0f);
-						}
-					}
-					else
-					{
-						ItemTier itemTier = pickupDef.itemTier;
-						switch (itemTier)
-						{
-							case ItemTier.Tier1:
-								color = Color.white;
-								break;
-							case ItemTier.Tier2:
-								color = Color.green;
-								break;
-							case ItemTier.Tier3:
-								color = Color.red;
-								break;
-							case ItemTier.Lunar:
-								color = new Color(0f, 0.5f, 1f);
-								break;
-							default:
-								color = new Color(0.35f, 0.35f, 0.35f);
-								break;
+							ItemTier itemTier = pickupDef.itemTier;
+							switch (itemTier)
+							{
+								case ItemTier.Tier1:
+									color = Color.white;
+									break;
+								case ItemTier.Tier2:
+									color = Color.green;
+									break;
+								case ItemTier.Tier3:
+									color = Color.red;
+									break;
+								case ItemTier.Lunar:
+									color = new Color(0f, 0.5f, 1f);
+									break;
+								default:
+									color = new Color(0.35f, 0.35f, 0.35f);
+									break;
+							}
 						}
 					}
 				}
-			}
 
-			self.shrineColor = color;
+				self.shrineColor = color;
+			}
 
 			return pickupIndex;
 		}

@@ -1,4 +1,4 @@
-using BepInEx;
+﻿using BepInEx;
 using BepInEx.Bootstrap;
 using RoR2;
 using System.Reflection;
@@ -7,7 +7,7 @@ using UnityEngine;
 namespace TPDespair.ZetTweaks
 {
 	internal static class TeleShowFix
-    {
+	{
 		private static BaseUnityPlugin TeleShowPlugin;
 		private static FieldInfo ShouldShowField;
 		private static bool TargetValue = false;
