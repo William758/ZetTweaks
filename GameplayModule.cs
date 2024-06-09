@@ -11,6 +11,7 @@ using UnityEngine.Networking;
 
 using EntityStates.Missions.Arena.NullWard;
 using System.Reflection;
+using BepInEx;
 
 namespace TPDespair.ZetTweaks
 {
@@ -118,6 +119,14 @@ namespace TPDespair.ZetTweaks
 		internal static SpawnCard EquipDroneSpawnCard { get => _equipDroneSpawnCard.Value; }
 
 		internal static GameObject LunarEquipmentDropletPrefab;
+
+
+
+		private static bool AspectsResolved = false;
+		internal static bool AspectCommandGroupItems = false;
+		internal static bool AspectCommandGroupEquip = false;
+		internal static List<ItemIndex> aspectItemIndexes = new List<ItemIndex>();
+		internal static List<EquipmentIndex> aspectEquipIndexes = new List<EquipmentIndex>();
 
 
 
@@ -409,7 +418,7 @@ namespace TPDespair.ZetTweaks
 				if (FixSelfDamageCfg.Value && !Compat.DisableSelfDamageFix)
 				{
 					SelfCrowbarHook();
-					SelfFocusHook();
+					if (!Compat.Risky) SelfFocusHook();
 					SelfWatchHook();
 				}
 
@@ -438,6 +447,7 @@ namespace TPDespair.ZetTweaks
 				}
 
 				if (CommandDropletFixCfg.Value && !Compat.DisableCommandDropletFix) CommandDropletFix();
+
 				if (CleanPickerOptionsCfg.Value) CleanPickerOptionsHook();
 				if (TeleportLostDropletCfg.Value && !Compat.DisableTeleportLostDroplet)
 				{
@@ -1087,13 +1097,15 @@ namespace TPDespair.ZetTweaks
 
 					c.EmitDelegate<Func<PickupDef, PickupDef>>((pickupDef) =>
 					{
-						if (pickupDef.itemIndex != ItemIndex.None)
+						if (Compat.ZetAspects && !AspectsResolved) ResolveAspects();
+
+						if (pickupDef.itemIndex != ItemIndex.None && (!Compat.ZetAspects || !AspectCommandGroupItems || !aspectItemIndexes.Contains(pickupDef.itemIndex)))
 						{
 							ItemDef itemDef = ItemCatalog.GetItemDef(pickupDef.itemIndex);
 							if (itemDef.ContainsTag(ItemTag.WorldUnique)) return null;
 						}
 
-						if (pickupDef.equipmentIndex != EquipmentIndex.None)
+						if (pickupDef.equipmentIndex != EquipmentIndex.None && (!Compat.ZetAspects || !AspectCommandGroupEquip || !aspectEquipIndexes.Contains(pickupDef.equipmentIndex)))
 						{
 							EquipmentDef equipDef = EquipmentCatalog.GetEquipmentDef(pickupDef.equipmentIndex);
 							if (!equipDef.canDrop) return null;
@@ -1109,7 +1121,114 @@ namespace TPDespair.ZetTweaks
 			};
 		}
 
-        private static void CleanPickerOptionsHook()
+		private static void ResolveAspects()
+		{
+			BindingFlags Flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+			BaseUnityPlugin Plugin = BepInEx.Bootstrap.Chainloader.PluginInfos["com.TPDespair.ZetAspects"].Instance;
+			Assembly PluginAssembly = Assembly.GetAssembly(Plugin.GetType());
+
+			Type type = Type.GetType("TPDespair.ZetAspects.Configuration, " + PluginAssembly.FullName, false);
+			if (type != null)
+			{
+				MethodInfo methodInfo = type.GetMethod("get_AspectCommandGroupItems", Flags);
+				if (methodInfo != null)
+				{
+					try
+					{
+						ConfigEntry<bool> config = (ConfigEntry<bool>)methodInfo.Invoke(null, null);
+						AspectCommandGroupItems = config.Value;
+					}
+					catch (Exception e)
+					{
+						Debug.LogError(e);
+					}
+				}
+				else
+				{
+					Debug.LogWarning("[ZetTweaks - ResolveAspects] - Could Not Find Method : Configuration.get_AspectCommandGroupItems");
+				}
+
+				methodInfo = type.GetMethod("get_AspectCommandGroupEquip", Flags);
+				if (methodInfo != null)
+				{
+					try
+					{
+						ConfigEntry<bool> config = (ConfigEntry<bool>)methodInfo.Invoke(null, null);
+						AspectCommandGroupEquip = config.Value;
+					}
+					catch (Exception e)
+					{
+						Debug.LogError(e);
+					}
+				}
+				else
+				{
+					Debug.LogWarning("[ZetTweaks - ResolveAspects] - Could Not Find Method : Configuration.get_AspectCommandGroupEquip");
+				}
+			}
+			else
+			{
+				Debug.LogWarning("[ZetTweaks - ResolveAspects] Could Not Find Type : TPDespair.ZetAspects.Configuration");
+			}
+
+
+
+			if (AspectCommandGroupItems || AspectCommandGroupEquip)
+			{
+				type = Type.GetType("TPDespair.ZetAspects.Catalog, " + PluginAssembly.FullName, false);
+				if (type != null)
+				{
+					if (AspectCommandGroupItems)
+					{
+						FieldInfo fieldInfo = type.GetField("aspectItemIndexes", Flags);
+						if (fieldInfo != null)
+						{
+							try
+							{
+								aspectItemIndexes = (List<ItemIndex>)fieldInfo.GetValue(null);
+							}
+							catch (Exception e)
+							{
+								Debug.LogError(e);
+							}
+						}
+						else
+						{
+							Debug.LogWarning("[ZetTweaks - ResolveAspects] - Could Not Find Field : Catalog.aspectItemIndexes");
+						}
+					}
+
+					if (AspectCommandGroupEquip)
+					{
+						FieldInfo fieldInfo = type.GetField("aspectEquipIndexes", Flags);
+						if (fieldInfo != null)
+						{
+							try
+							{
+								aspectEquipIndexes = (List<EquipmentIndex>)fieldInfo.GetValue(null);
+							}
+							catch (Exception e)
+							{
+								Debug.LogError(e);
+							}
+						}
+						else
+						{
+							Debug.LogWarning("[ZetTweaks - ResolveAspects] - Could Not Find Field : Catalog.aspectEquipIndexes");
+						}
+					}
+				}
+				else
+				{
+					Debug.LogWarning("[ZetTweaks - ResolveAspects] Could Not Find Type : TPDespair.ZetAspects.Catalog");
+				}
+			}
+
+			AspectsResolved = true;
+		}
+
+		private static void CleanPickerOptionsHook()
 		{
 			On.RoR2.PickupPickerController.GetOptionsFromPickupIndex += (orig, pickupIndex) =>
 			{

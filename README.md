@@ -74,6 +74,10 @@ Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
 
+v1.1.8 - ZetAspects compatibility for CommandDropletFix.
+
+v1.1.7 - Fixed for latest game update.
+
 v1.1.6 - Fixed prevention of self damage increasing effects.
 
 v1.1.5 - Change lunar equipment droplet color. Remove unobtainable items in the command menu. ChanceShrines improve with failures and are configurable.

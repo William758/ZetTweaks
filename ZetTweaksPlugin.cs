@@ -19,7 +19,7 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.1.7";
+		public const string ModVer = "1.1.8";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
@@ -203,6 +203,7 @@ namespace TPDespair.ZetTweaks
 			if (PluginLoaded("com.Chen.ChensGradiusMod")) Compat.ChenGradius = true;
 			if (PluginLoaded("com.Wolfo.WolfoQualityOfLife")) Compat.WolfoQol = true;
 			if (PluginLoaded("com.TPDespair.ZetAspects")) Compat.ZetAspects = true;
+			if (PluginLoaded("com.RiskyLives.RiskyMod")) Compat.Risky = true;
 
 			if (PluginLoaded("com.xoxfaby.BetterGameplay"))
 			{
@@ -287,6 +288,7 @@ namespace TPDespair.ZetTweaks
 		public static bool ChenGradius = false;
 		public static bool WolfoQol = false;
 		public static bool ZetAspects = false;
+		public static bool Risky = false;
 
 		public static bool DisableSelfDamageFix = false;
 		public static bool DisableBazaarGesture = false;
