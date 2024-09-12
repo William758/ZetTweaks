@@ -19,7 +19,7 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.1.8";
+		public const string ModVer = "1.2.0";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
@@ -40,7 +40,6 @@ namespace TPDespair.ZetTweaks
 		public static ConfigFile ConfigFile;
 
 		public static ConfigEntry<bool> AutoCompatCfg { get; set; }
-		public static ConfigEntry<bool> FixTeleShowCfg { get; set; }
 		public static ConfigEntry<bool> FixNoLockedCfg { get; set; }
 
 
@@ -55,20 +54,15 @@ namespace TPDespair.ZetTweaks
 			GameplayModule.SetupConfig();
 
 			GameplayModule.Init();
-			OnLogBookControllerReady();
+			On.RoR2.UI.LogBook.LogBookController.Init += OnLogBookControllerReady;
 			OnMainMenuEnter();
 		}
-
+		/*
 		public void Update()
 		{
-			//DebugDrops();
-
-			if (lateSetupCompleted)
-			{
-				if (FixTeleShowCfg.Value && TeleShowFix.Enabled) TeleShowFix.SetShouldShow();
-			}
+			DebugDrops();
 		}
-
+		//*/
 
 
 		private static void SetupConfig()
@@ -82,10 +76,6 @@ namespace TPDespair.ZetTweaks
 
 			// 0b - Fixes
 
-			FixTeleShowCfg = Config.Bind(
-				"0c-Core - ModFixes", "fixTeleShow", true,
-				"Fix nullref spam when local player is dead."
-			);
 			FixNoLockedCfg = Config.Bind(
 				"0c-Core - ModFixes", "fixNoLockedInteractables", true,
 				"Fix nullref spam when teleporter event is active."
@@ -123,27 +113,24 @@ namespace TPDespair.ZetTweaks
 
 
 
-		private static void OnLogBookControllerReady()
+		private static System.Collections.IEnumerator OnLogBookControllerReady(On.RoR2.UI.LogBook.LogBookController.orig_Init orig)
 		{
-			On.RoR2.UI.LogBook.LogBookController.Init += (orig) =>
+			try
 			{
-				try
+				if (!lateSetupAttempted)
 				{
-					if (!lateSetupAttempted)
-					{
-						lateSetupAttempted = true;
+					lateSetupAttempted = true;
 
-						FindIndexes();
-						LateSetup();
-					}
+					FindIndexes();
+					LateSetup();
 				}
-				catch (Exception ex)
-				{
-					Debug.LogError(ex);
-				}
+			}
+			catch (Exception ex)
+			{
+				Debug.LogError(ex);
+			}
 
-				orig();
-			};
+			yield return orig();
 		}
 
 		private static void OnMainMenuEnter()
@@ -184,8 +171,6 @@ namespace TPDespair.ZetTweaks
 
 		private static void LateSetup()
 		{
-			if (FixTeleShowCfg.Value && TeleShowFix.Enabled) TeleShowFix.Init();
-
 			if (GameplayModule.MoneyStageLimitCfg.Value > 0 && !Compat.DisableStarterMoney && ShareSuiteCompat.Enabled) ShareSuiteCompat.Init();
 
 			if (AutoCompatCfg.Value) SetupCompat();
@@ -204,20 +189,16 @@ namespace TPDespair.ZetTweaks
 			if (PluginLoaded("com.Wolfo.WolfoQualityOfLife")) Compat.WolfoQol = true;
 			if (PluginLoaded("com.TPDespair.ZetAspects")) Compat.ZetAspects = true;
 			if (PluginLoaded("com.RiskyLives.RiskyMod")) Compat.Risky = true;
+			if (PluginLoaded("com.rob.OutOfBoundsItemsFix")) Compat.DisableTeleportLostDroplet = true;
 
-			if (PluginLoaded("com.xoxfaby.BetterGameplay"))
-			{
-				Compat.DisableBazaarGesture = true;
-				Compat.DisableTeleportLostDroplet = true;
-			}
 			if (PluginLoaded("com.Moffein.NoBazaarKickout")) Compat.DisableBazaarPreventKickout = true;
 			if (PluginLoaded("com.Anreol.VoidQoL")) Compat.DisableVoidHealthHeal = true;
 			if (PluginLoaded("KevinPione.CellVentHeal")) Compat.DisableVoidHealthHeal = true;
 			if (PluginLoaded("com.Borbo.BORBO")) Compat.DisableBossDropTweak = true;
 			if (PluginLoaded("com.Wolfo.YellowPercent")) Compat.DisableBossDropTweak = true;
 			if (PluginLoaded("com.TPDespair.CommandDropletFix")) Compat.DisableCommandDropletFix = true;
-			if (PluginLoaded("Withor.SavageHuntress")) Compat.DisableHuntressRange = true;
-			if (PluginLoaded("HIFU.HuntressAutoaimFix")) Compat.DisableHuntressAimFix = true;
+			//if (PluginLoaded("Withor.SavageHuntress")) Compat.DisableHuntressRange = true;
+			//if (PluginLoaded("HIFU.HuntressAutoaimFix")) Compat.DisableHuntressAimFix = true;
 			if (PluginLoaded("Xatha.SoCRebalancePlugin")) Compat.DisableChanceShrine = true;
 
 			// oudated mods ???
@@ -225,8 +206,13 @@ namespace TPDespair.ZetTweaks
 			if (PluginLoaded("Rein.GeneralFixes")) Compat.DisableSelfDamageFix = true;
 			if (PluginLoaded("_Simon.NoBazaarKickOut")) Compat.DisableBazaarPreventKickout = true;
 			if (PluginLoaded("com.FluffyMods.PocketMoney")) Compat.DisableStarterMoney = true;
-			if (PluginLoaded("com.TeaBoneJones.IncreaseHuntressRange")) Compat.DisableHuntressRange = true;
+			//if (PluginLoaded("com.TeaBoneJones.IncreaseHuntressRange")) Compat.DisableHuntressRange = true;
 			if (PluginLoaded("com.Elysium.ScalingBloodShrines")) Compat.DisableBloodShrineScale = true;
+			if (PluginLoaded("com.xoxfaby.BetterGameplay"))
+			{
+				Compat.DisableBazaarGesture = true;
+				Compat.DisableTeleportLostDroplet = true;
+			}
 		}
 
 

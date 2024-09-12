@@ -4,13 +4,11 @@ Most listed changes can be configured and disable.
 
 Some changes will be disabled if another mod already does that change.
 
-Fix console error spam from TeleShow and NoLockedInteractables.
-
 - Change lunar equipment droplet color.
 
 - Prevent Focus Crystal, Crowbar and Delicate Watch from increasing self-damage.
 
-- Only place PrimordialTeleporter on last stage of a loop.
+- Always place PrimordialTeleporter after it first appears.
 
 - Equipment isn't triggered by Gesture in the Bazaar.
 
@@ -52,8 +50,6 @@ Fix console error spam from TeleShow and NoLockedInteractables.
 
 - Pickups that go out of bounds are teleported back onto the stage.
 
-- Increase Huntress targeting range by 2m every level and prioritize enemies near the crosshair.
-
 - Prevent allied drones from targeting allies after certain items proc.
 
 - EquipmentDrones have a 25% chance to drop equipment after they are destroyed.
@@ -73,6 +69,8 @@ Requires Bepinex and HookGenPatcher.
 Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
+
+v1.2.0 - Updated for SotS. Removed some old mod compat. Removed Huntress tweaks.
 
 v1.1.8 - ZetAspects compatibility for CommandDropletFix.
 
