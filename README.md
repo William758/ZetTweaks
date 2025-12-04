@@ -70,6 +70,8 @@ Use r2modman or place inside of Risk of Rain 2/Bepinex/Plugins/
 
 ## Changelog:
 
+v1.3.0 - Updated for AC. Removed even more old mod compat.
+
 v1.2.0 - Updated for SotS. Removed some old mod compat. Removed Huntress tweaks.
 
 v1.1.8 - ZetAspects compatibility for CommandDropletFix.

@@ -415,11 +415,14 @@ namespace TPDespair.ZetTweaks
 		{
 			if (EnableModuleCfg.Value)
 			{
-				if (FixSelfDamageCfg.Value && !Compat.DisableSelfDamageFix)
+				if (FixSelfDamageCfg.Value)
 				{
-					SelfCrowbarHook();
-					if (!Compat.Risky) SelfFocusHook();
-					SelfWatchHook();
+					SelfDamageFlagHook();
+					ItemCountOverrideHook();
+
+					selfDamageItemIndexes.Add(RoR2Content.Items.Crowbar.itemIndex);
+					selfDamageItemIndexes.Add(RoR2Content.Items.NearbyDamageBonus.itemIndex);
+					selfDamageItemIndexes.Add(DLC1Content.Items.FragileDamageBonus.itemIndex);
 				}
 
 				if (BazaarGestureCfg.Value && !Compat.DisableBazaarGesture) BazaarGestureHook();
@@ -489,110 +492,43 @@ namespace TPDespair.ZetTweaks
 
 
 
-		private static void SelfCrowbarHook()
+		public static bool isAttackingSelfFlag = false;
+		public static HashSet<ItemIndex> selfDamageItemIndexes = new HashSet<ItemIndex>();
+
+		private static void SelfDamageFlagHook()
 		{
-			IL.RoR2.HealthComponent.TakeDamageProcess += (il) =>
+			On.RoR2.HealthComponent.TakeDamageProcess += (orig, self, damageInfo) =>
 			{
-				ILCursor c = new ILCursor(il);
-
-				ILLabel jumpTo = null;
-
-				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(22),
-					x => x.MatchLdcI4(0),
-					x => x.MatchBle(out jumpTo)
-				);
-
-				if (found)
+				GameObject attacker = damageInfo.attacker;
+				if (attacker != null)
 				{
-					c.Index += 3;
-
-					c.Emit(OpCodes.Ldarg, 0);
-					c.Emit(OpCodes.Ldloc, 1);
-					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, atkBody) =>
+					CharacterBody atkBody = attacker.GetComponent<CharacterBody>();
+					if (atkBody != null)
 					{
-						if (healthComponent.body == atkBody) return true;
+						if (atkBody == self.body) isAttackingSelfFlag = true;
+					}
+				}
 
-						return false;
-					});
-					c.Emit(OpCodes.Brtrue, jumpTo);
-				}
-				else
-				{
-					Debug.LogWarning("ZetTweaks - SelfCrowbarHook Failed!");
-				}
+				orig(self, damageInfo);
+
+				isAttackingSelfFlag = false;
 			};
 		}
 
-		private static void SelfFocusHook()
+		private static void ItemCountOverrideHook()
 		{
-			IL.RoR2.HealthComponent.TakeDamageProcess += (il) =>
+			On.RoR2.Inventory.GetItemCountEffective_ItemIndex += (orig, self, itemIndex) =>
 			{
-				ILCursor c = new ILCursor(il);
-
-				ILLabel jumpTo = null;
-
-				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(27),
-					x => x.MatchLdcI4(0),
-					x => x.MatchBle(out jumpTo)
-				);
-
-				if (found)
+				if (isAttackingSelfFlag && selfDamageItemIndexes.Contains(itemIndex))
 				{
-					c.Index += 3;
-
-					c.Emit(OpCodes.Ldarg, 0);
-					c.Emit(OpCodes.Ldloc, 1);
-					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, atkBody) =>
-					{
-						if (healthComponent.body == atkBody) return true;
-
-						return false;
-					});
-					c.Emit(OpCodes.Brtrue, jumpTo);
+					return 0;
 				}
-				else
-				{
-					Debug.LogWarning("ZetTweaks - SelfFocusHook Failed!");
-				}
+
+				return orig(self, itemIndex);
 			};
 		}
 
-		private static void SelfWatchHook()
-		{
-			IL.RoR2.HealthComponent.TakeDamageProcess += (il) =>
-			{
-				ILCursor c = new ILCursor(il);
 
-				ILLabel jumpTo = null;
-
-				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(28),
-					x => x.MatchLdcI4(0),
-					x => x.MatchBle(out jumpTo)
-				);
-
-				if (found)
-				{
-					c.Index += 3;
-
-					c.Emit(OpCodes.Ldarg, 0);
-					c.Emit(OpCodes.Ldloc, 1);
-					c.EmitDelegate<Func<HealthComponent, CharacterBody, bool>>((healthComponent, atkBody) =>
-					{
-						if (healthComponent.body == atkBody) return true;
-
-						return false;
-					});
-					c.Emit(OpCodes.Brtrue, jumpTo);
-				}
-				else
-				{
-					Debug.LogWarning("ZetTweaks - SelfWatchHook Failed!");
-				}
-			};
-		}
 
 		private static void PlaceTeleporterHook()
 		{
@@ -600,7 +536,7 @@ namespace TPDespair.ZetTweaks
 			{
 				if (self.teleporterSpawnCard != null)
 				{
-					bool flag = Run.instance.NetworkstageClearCount >= Run.stagesPerLoop - 1;
+					bool flag = Run.instance.NetworkstageClearCount >= 4;
 					string cardName = flag ? "iscLunarTeleporter" : "iscTeleporter";
 
 					SpawnCard spawnCard = LegacyResourcesAPI.Load<InteractableSpawnCard>("spawncards/interactablespawncard/" + cardName);
@@ -621,7 +557,7 @@ namespace TPDespair.ZetTweaks
 
 				bool found = c.TryGotoNext(
 					x => x.MatchLdsfld(typeof(RoR2Content.Items).GetField("AutoCastEquipment")),
-					x => x.MatchCall<Inventory>("GetItemCount")
+					x => x.MatchCallOrCallvirt<Inventory>("GetItemCountEffective")
 				);
 
 				if (found)
@@ -772,17 +708,18 @@ namespace TPDespair.ZetTweaks
 			{
 				ILCursor c = new ILCursor(il);
 
+				int GoldRewardLocIndex = -1;
+
 				bool found = c.TryGotoNext(
-					x => x.MatchLdarg(0),
 					x => x.MatchCallOrCallvirt<DeathRewards>("get_goldReward"),
-					x => x.MatchStloc(2)
+					x => x.MatchStloc(out GoldRewardLocIndex)
 				);
 
 				if (found)
 				{
-					c.Index += 3;
+					c.Index += 2;
 
-					c.Emit(OpCodes.Ldloc, 2);
+					c.Emit(OpCodes.Ldloc, GoldRewardLocIndex);
 					c.EmitDelegate<Func<uint, uint>>((reward) =>
 					{
 						int playerCount = Run.instance.participatingPlayerCount;
@@ -807,7 +744,7 @@ namespace TPDespair.ZetTweaks
 
 						return reward;
 					});
-					c.Emit(OpCodes.Stloc, 2);
+					c.Emit(OpCodes.Stloc, GoldRewardLocIndex);
 				}
 				else
 				{
@@ -1231,9 +1168,9 @@ namespace TPDespair.ZetTweaks
 
 		private static void CleanPickerOptionsHook()
 		{
-			On.RoR2.PickupPickerController.GetOptionsFromPickupIndex += (orig, pickupIndex) =>
+			On.RoR2.PickupPickerController.GetOptionsFromPickupState += (orig, pickupState) =>
 			{
-				PickupPickerController.Option[] options = orig(pickupIndex);
+				PickupPickerController.Option[] options = orig(pickupState);
 
 				return CleanupOptions(options);
 			};
@@ -1248,7 +1185,7 @@ namespace TPDespair.ZetTweaks
 				bool valid = true;
 				PickupPickerController.Option option = options[i];
 
-				PickupDef pickupDef = PickupCatalog.GetPickupDef(option.pickupIndex);
+				PickupDef pickupDef = PickupCatalog.GetPickupDef(option.pickup.pickupIndex);
 				if (pickupDef.itemIndex != ItemIndex.None)
 				{
 					ItemDef itemDef = ItemCatalog.GetItemDef(pickupDef.itemIndex);
@@ -1384,11 +1321,18 @@ namespace TPDespair.ZetTweaks
 			{
 				DirectorCardCategorySelection.Category cat = dccs.categories[i];
 
-				if (cat.name == "Drones") DroneCatagoryIndex = i;
+				if (cat.name != null && cat.name == "Drones") DroneCatagoryIndex = i;
 
 				for (int j = cat.cards.Length - 1; j >= 0; j--)
 				{
 					DirectorCard obj = cat.cards[j];
+					string cardName = "";
+					if (obj.spawnCard != null)
+					{
+						string name = obj.spawnCard.name;
+
+						if (name != null) cardName = name;
+					}
 					/*
 					Debug.LogWarning(obj.spawnCard);
 					Debug.LogWarning(obj.selectionWeight);
@@ -1398,12 +1342,12 @@ namespace TPDespair.ZetTweaks
 					//*/
 					if (!basicDroneInDeck)
 					{
-						if (obj.spawnCard.name == "iscBrokenDrone1") basicDroneInDeck = true;
-						if (obj.spawnCard.name == "iscBrokenDrone2") basicDroneInDeck = true;
+						if (cardName == "iscBrokenDrone1") basicDroneInDeck = true;
+						if (cardName == "iscBrokenDrone2") basicDroneInDeck = true;
 					}
 
-					if (obj.spawnCard.name == "iscBrokenMegaDrone") megaDroneInDeck = true;
-					if (obj.spawnCard.name == "iscBrokenEquipmentDrone") equipDroneInDeck = true;
+					if (cardName == "iscBrokenMegaDrone") megaDroneInDeck = true;
+					if (cardName == "iscBrokenEquipmentDrone") equipDroneInDeck = true;
 				}
 			}
 
@@ -1541,12 +1485,12 @@ namespace TPDespair.ZetTweaks
 									{
 										position = body.corePosition,
 										rotation = Quaternion.identity,
-										pickupIndex = pickupIndex
+										pickup = new UniquePickup(pickupIndex)
 									};
 
 									GenericPickupController.CreatePickup(pickupInfo);
 
-									master.inventory.SetEquipmentIndex(EquipmentIndex.None);
+									master.inventory.SetEquipmentIndex(EquipmentIndex.None, true);
 								}
 							}
 						}
@@ -1639,11 +1583,13 @@ namespace TPDespair.ZetTweaks
 			{
 				ILCursor c = new ILCursor(il);
 
+				int PickupInvalidFlag = -1;
+
 				bool found = c.TryGotoNext(
-					x => x.MatchLdloc(0),
-					x => x.MatchLdsfld<PickupIndex>("none"),
-					x => x.MatchCall(out _),
-					x => x.MatchStloc(3)
+					x => x.MatchCallOrCallvirt(typeof(UniquePickup).GetMethod("get_isValid")),
+					x => x.MatchLdcI4(0),
+					x => x.MatchCeq(),
+					x => x.MatchStloc(out PickupInvalidFlag)
 				);
 
 				if (found)
@@ -1654,24 +1600,24 @@ namespace TPDespair.ZetTweaks
 
 					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldarg, 1);
-					c.EmitDelegate<Func<ShrineChanceBehavior, Interactor, PickupIndex>>((self, interactor) =>
+					c.EmitDelegate<Func<ShrineChanceBehavior, Interactor, UniquePickup>>((self, interactor) =>
 					{
 						return GenerateDrop(self, interactor);
 					});
 					c.Emit(OpCodes.Stloc, 0);
 
 					c.Emit(OpCodes.Ldloc, 0);
-					c.EmitDelegate<Func<PickupIndex, bool>>((pickupIndex) =>
+					c.EmitDelegate<Func<UniquePickup, bool>>((pickup) =>
 					{
-						return pickupIndex == PickupIndex.none;
+						return !pickup.isValid;
 					});
-					c.Emit(OpCodes.Stloc, 3);
+					c.Emit(OpCodes.Stloc, PickupInvalidFlag);
+
+
 
 					c.Index = 0;
 
 					found = c.TryGotoNext(
-						//x => x.MatchLdsfld<PickupIndex>("none"),
-						//x => x.MatchStloc(0)
 						x => x.MatchCallOrCallvirt<Component>("GetComponent"),
 						x => x.MatchStloc(1)
 					);
@@ -1718,13 +1664,13 @@ namespace TPDespair.ZetTweaks
 
 					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldloc, 0);
-					c.EmitDelegate<Func<Color, ShrineChanceBehavior, PickupIndex, Color>>((color, self, pickupIndex) =>
+					c.EmitDelegate<Func<Color, ShrineChanceBehavior, UniquePickup, Color>>((color, self, pickup) =>
 					{
 						bool isHardShrine = self.failureChance >= 0.945f;
 
 						if (isHardShrine) return color;
 
-						return GetPickupColor(pickupIndex);
+						return GetPickupColor(pickup);
 					});
 				}
 				else
@@ -1744,13 +1690,13 @@ namespace TPDespair.ZetTweaks
 
 					c.Emit(OpCodes.Ldarg, 0);
 					c.Emit(OpCodes.Ldloc, 0);
-					c.EmitDelegate<Func<Color, ShrineChanceBehavior, PickupIndex, Color>>((color, self, pickupIndex) =>
+					c.EmitDelegate<Func<Color, ShrineChanceBehavior, UniquePickup, Color>>((color, self, pickup) =>
 					{
 						bool isHardShrine = self.failureChance >= 0.945f;
 
 						if (isHardShrine) return color;
 
-						return GetPickupColor(pickupIndex);
+						return GetPickupColor(pickup);
 					});
 				}
 				else
@@ -1760,7 +1706,7 @@ namespace TPDespair.ZetTweaks
 			};
 		}
 
-		private static PickupIndex GenerateDrop(ShrineChanceBehavior self, Interactor activator)
+		private static UniquePickup GenerateDrop(ShrineChanceBehavior self, Interactor activator)
 		{
 			ChanceShrineTracker tracker = self.GetComponent<ChanceShrineTracker>();
 			if (!tracker)
@@ -1781,7 +1727,7 @@ namespace TPDespair.ZetTweaks
 				Inventory inventory = body.inventory;
 				if (inventory != null)
 				{
-					dollCount = Mathf.Min(inventory.GetItemCount(DLC2Content.Items.ExtraShrineItem), 10);
+					dollCount = Mathf.Min(inventory.GetItemCountEffective(DLC2Content.Items.ExtraShrineItem), 10);
 				}
 			}
 
@@ -1805,18 +1751,17 @@ namespace TPDespair.ZetTweaks
 					//self.colorShrineRewardJackpot = new Color(0.35f, 0.35f, 0.35f);
 				}
 
-				return PickupIndex.none;
+				return UniquePickup.none;
 			}
 
 
-
-			PickupIndex pickupIndex = PickupIndex.none;
+			UniquePickup pickup = UniquePickup.none;
 
 			if (self.dropTable)
 			{
 				if (isHardShrine)
 				{
-					pickupIndex = self.dropTable.GenerateDrop(self.rng);
+					pickup = self.dropTable.GeneratePickup(self.rng);
 					self.chanceDollWin = false;
 
 					Debug.LogWarning("ZetTweaks [ChanceShrine] - isHardShrine");
@@ -1825,7 +1770,7 @@ namespace TPDespair.ZetTweaks
 				{
 					if (Util.CheckRoll(30 + dollCount * 10, body.master))
 					{
-						pickupIndex = self.chanceDollDropTable.GenerateDrop(self.rng);
+						pickup = self.chanceDollDropTable.GeneratePickup(self.rng);
 						self.chanceDollWin = true;
 
 						Debug.LogWarning("ZetTweaks [ChanceShrine] - dollRoll");
@@ -1836,9 +1781,9 @@ namespace TPDespair.ZetTweaks
 					}
 				}
 
-				if (pickupIndex == PickupIndex.none && !ChanceShrineBypassDropTableCfg.Value)
+				if (pickup.pickupIndex == PickupIndex.none && !ChanceShrineBypassDropTableCfg.Value)
 				{
-					pickupIndex = self.dropTable.GenerateDrop(self.rng);
+					pickup = self.dropTable.GeneratePickup(self.rng);
 					self.chanceDollWin = false;
 
 					Debug.LogWarning("ZetTweaks [ChanceShrine] - defaultRoll");
@@ -1849,7 +1794,7 @@ namespace TPDespair.ZetTweaks
 				self.chanceDollWin = false;
 			}
 
-			if (pickupIndex == PickupIndex.none || self.chanceDollWin)
+			if (pickup.pickupIndex == PickupIndex.none || self.chanceDollWin)
 			{
 				if (dollCount > 0) dollCount = 1 + Mathf.FloorToInt(dollCount * 0.2f);
 
@@ -1878,29 +1823,29 @@ namespace TPDespair.ZetTweaks
 				{
 					PickupIndex pickupIndex2 = weightedSelection.Evaluate(self.rng.nextNormalizedFloat);
 
-					if (GetPickupValue(pickupIndex2) > GetPickupValue(pickupIndex))
+					if (GetPickupValue(pickupIndex2) > GetPickupValue(pickup.pickupIndex))
 					{
-						pickupIndex = pickupIndex2;
+						pickup = new UniquePickup(pickupIndex2);
 
 						Debug.LogWarning("ZetTweaks [ChanceShrine] - replaceDollResult");
 					}
 				}
 				else
 				{
-					pickupIndex = weightedSelection.Evaluate(self.rng.nextNormalizedFloat);
+					pickup = new UniquePickup(weightedSelection.Evaluate(self.rng.nextNormalizedFloat));
 				}
 			}
 
 			if (ChanceShrineLunarConversionCfg.Value)
 			{
-				pickupIndex = RoR2.Items.RandomlyLunarUtils.CheckForLunarReplacement(pickupIndex, self.rng);
+				pickup = RoR2.Items.RandomlyLunarUtils.CheckForLunarReplacement(pickup, self.rng);
 			}
 
 			if (!isHardShrine)
 			{
 				//Color color = GetPickupColor(pickupIndex);
 
-				if (pickupIndex != PickupIndex.none)
+				if (pickup.pickupIndex != PickupIndex.none)
 				{
 					if (tracker && !lockFailCount)
 					{
@@ -1913,7 +1858,7 @@ namespace TPDespair.ZetTweaks
 				//self.colorShrineRewardNormal = color;
 			}
 
-			return pickupIndex;
+			return pickup;
 		}
 		
 		private static void ConvertToChance(ref float num1, ref float num2, ref float num3, ref float num4)
@@ -1926,17 +1871,17 @@ namespace TPDespair.ZetTweaks
 			num4 /= divisor;
 		}
 		
-		private static Color GetPickupColor(PickupIndex pickupIndex)
+		private static Color GetPickupColor(UniquePickup pickup)
 		{
 			Color color = new Color(0.35f, 0.35f, 0.35f);
 
-			if (pickupIndex == PickupIndex.none)
+			if (pickup.pickupIndex == PickupIndex.none)
 			{
 				Debug.LogWarning("ZetTweaks [ChanceShrineColor] - grey");
 				return color;
 			}
 
-			PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupIndex);
+			PickupDef pickupDef = PickupCatalog.GetPickupDef(pickup.pickupIndex);
 			if (pickupDef != null)
 			{
 				if (pickupDef.equipmentIndex != EquipmentIndex.None)

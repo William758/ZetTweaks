@@ -19,7 +19,7 @@ namespace TPDespair.ZetTweaks
 
 	public class ZetTweaksPlugin : BaseUnityPlugin
 	{
-		public const string ModVer = "1.2.0";
+		public const string ModVer = "1.3.0";
 		public const string ModName = "ZetTweaks";
 		public const string ModGuid = "com.TPDespair.ZetTweaks";
 
@@ -92,7 +92,7 @@ namespace TPDespair.ZetTweaks
 
 			return prefab;
 		}
-
+		// wtf???
 		private static GameObject GetCloneParent()
 		{
 			if (!CloneParent)
@@ -197,22 +197,7 @@ namespace TPDespair.ZetTweaks
 			if (PluginLoaded("com.Borbo.BORBO")) Compat.DisableBossDropTweak = true;
 			if (PluginLoaded("com.Wolfo.YellowPercent")) Compat.DisableBossDropTweak = true;
 			if (PluginLoaded("com.TPDespair.CommandDropletFix")) Compat.DisableCommandDropletFix = true;
-			//if (PluginLoaded("Withor.SavageHuntress")) Compat.DisableHuntressRange = true;
-			//if (PluginLoaded("HIFU.HuntressAutoaimFix")) Compat.DisableHuntressAimFix = true;
 			if (PluginLoaded("Xatha.SoCRebalancePlugin")) Compat.DisableChanceShrine = true;
-
-			// oudated mods ???
-			if (PluginLoaded("com.rob.VoidFieldsQoL")) Compat.DisableVoidHealthHeal = true;
-			if (PluginLoaded("Rein.GeneralFixes")) Compat.DisableSelfDamageFix = true;
-			if (PluginLoaded("_Simon.NoBazaarKickOut")) Compat.DisableBazaarPreventKickout = true;
-			if (PluginLoaded("com.FluffyMods.PocketMoney")) Compat.DisableStarterMoney = true;
-			//if (PluginLoaded("com.TeaBoneJones.IncreaseHuntressRange")) Compat.DisableHuntressRange = true;
-			if (PluginLoaded("com.Elysium.ScalingBloodShrines")) Compat.DisableBloodShrineScale = true;
-			if (PluginLoaded("com.xoxfaby.BetterGameplay"))
-			{
-				Compat.DisableBazaarGesture = true;
-				Compat.DisableTeleportLostDroplet = true;
-			}
 		}
 
 
@@ -276,7 +261,6 @@ namespace TPDespair.ZetTweaks
 		public static bool ZetAspects = false;
 		public static bool Risky = false;
 
-		public static bool DisableSelfDamageFix = false;
 		public static bool DisableBazaarGesture = false;
 		public static bool DisableBazaarPreventKickout = false;
 		public static bool DisableVoidHealthHeal = false;
